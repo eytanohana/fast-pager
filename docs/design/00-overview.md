@@ -77,6 +77,34 @@ single coherent surface — rather than three bolt-ons — is the product.
 5. **Composable, not magic.** The output is a plain query object you can inspect,
    log, modify, and test. No hidden global state.
 
+## Prior art & differentiation
+
+We are not the first to touch this space, and the design should be judged
+against what already exists:
+
+- **[`fastapi-filter`](https://github.com/arthurio/fastapi-filter)** — Pydantic
+  filter classes for FastAPI with SQLAlchemy and MongoEngine/Beanie backends.
+  Closest relative. Differences: it requires hand-writing a filter class per
+  model (no zero-config derivation from the resource model), and its filters
+  compile directly per-ORM rather than through a backend-neutral AST.
+- **[`fastapi-pagination`](https://github.com/uriyyo/fastapi-pagination)** —
+  excellent, widely-used pagination envelopes for many backends, but pagination
+  only: no filtering or sorting derivation.
+- **[`django-filter`](https://github.com/carltongibson/django-filter)** — the
+  DX north star (our `FilterSet` is a deliberate homage), but Django/DRF-only.
+
+`fast-pager`'s bet, stated plainly: **derive the whole list-endpoint surface
+(filter + sort + paginate) from the Pydantic model the endpoint already has**,
+keep the core backend-neutral behind a plain AST, and make zero-config the
+starting point rather than a class-per-model. If a hand-written filter class
+per model is acceptable to you and you only need one backend, `fastapi-filter`
+is a fine choice today.
+
+> **Naming note:** verify `fast-pager` is available on PyPI before release, and
+> be aware "pager" can read as paging/on-call (PagerDuty) out of context. The
+> README tagline should always lead with "pagination + filtering for FastAPI"
+> so the elevator pitch disambiguates.
+
 ## Who is this for
 
 - Teams with many CRUD-ish FastAPI + Mongo endpoints who are tired of the

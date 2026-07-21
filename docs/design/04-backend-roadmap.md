@@ -1,10 +1,8 @@
 # 04 — Backend Roadmap
 
-> Your question: *"Do you see a product roadmap to extend this past Mongo? Can we
-> generalize it for any DB or slowly expand the list of DBs?"*
-
-Yes. The `FilterAST` + `QueryCompiler` boundary (doc 03) is designed exactly for
-this. The front half of the library — model introspection, parameter generation,
+Can this generalize past Mongo — to any database, or at least a steadily
+growing list? Yes, by design. The `FilterAST` + `QueryCompiler` boundary
+(doc 03) exists exactly for this. The front half of the library — model introspection, parameter generation,
 OpenAPI, validation — is **100% backend-neutral**. Adding a database is writing one
 adapter class, not touching the core.
 
@@ -84,7 +82,7 @@ configure(backend=MongoCompiler())          # or SQLAlchemyCompiler(...), etc.
 
 # endpoint is backend-agnostic
 @app.get("/users")
-async def list_users(q: FilterQuery[User] = FilterDepends()):
+async def list_users(q: FilterQuery[User] = FilterDepends(User)):
     return run(q)        # run() dispatches via the configured backend
 ```
 

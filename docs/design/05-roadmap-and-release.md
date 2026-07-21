@@ -10,12 +10,17 @@ Each phase ends with something shippable and is gated by concrete exit criteria.
 - **Layout:** `src/fast_pager/` package layout; `tests/`; `docs/` (MkDocs
   Material); `examples/` (runnable FastAPI apps).
 - **Quality gates in CI** (GitHub Actions): lint, type-check, test matrix over
-  Python 3.10–3.13 and Pydantic v2.x. Coverage threshold.
+  Python 3.11–3.14 and Pydantic v2.x. Coverage threshold. (3.10 is skipped:
+  it reaches end-of-life in October 2026, around when this ships.) The FastAPI
+  floor is decided by the Phase 1 parameter-generation spike (doc 03) — the
+  native query-model path requires **FastAPI ≥ 0.115**.
 - **Pre-commit** hooks mirroring CI. **Conventional commits** + automated
   changelog. **Semantic versioning**, `0.x` until the API stabilizes.
 - **Docs site from day one** — design docs (these files) seed it. Docs are a
   feature, not an afterthought.
-- **License:** MIT or Apache-2.0 (permissive → maximize adoption).
+- **License:** **MIT** (permissive → maximize adoption; matches FastAPI,
+  Pydantic, and the ecosystem's expectations). Decided — add `LICENSE` in
+  Phase 0.
 
 Dependencies kept minimal: `fastapi`, `pydantic>=2`, `typing-extensions`. Drivers
 are optional extras (`[mongo]`, `[sqlalchemy]`). Core has **no database
@@ -30,9 +35,10 @@ dependency**.
 - Introspector for scalar + `Optional` fields.
 - Operator registry with `safe`/`full` tiers for `str`, numerics, `bool`,
   datetimes, `UUID`, `Enum`/`Literal`.
-- FastAPI signature generation → params visible & validated in `/docs`.
+- Parameter generation spike (native query-model vs synthesized signature,
+  doc 03), then implementation → params visible & validated in `/docs`.
 - `FilterAST` + `MongoCompiler` (returns plain dict).
-- `FilterDepends()` + `FilterQuery[Model]` (Option C zero-config).
+- `FilterDepends(Model)` + `FilterQuery[Model]` (Option C zero-config).
 - Pagination (`offset`/`limit`) + sorting (`sort=`), with `max_limit` guard.
 - Safety defaults: `regex` off, list caps, sortable allow-list.
 

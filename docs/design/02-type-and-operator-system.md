@@ -24,7 +24,7 @@ per-field overrides layered on top.
 
 | Python / Pydantic type | Default operators (`safe`) | Additional in `full` |
 |---|---|---|
-| `str` | `eq`, `ne`, `in`, `nin`, `contains`, `startswith`, `endswith` | `icontains`, `istartswith`, `iendswith`, `regex` |
+| `str` | `eq`, `ne`, `in`, `nin`, `contains`, `startswith`, `endswith` | `icontains`, `istartswith`, `iendswith`, `regex`, `text_search` |
 | `int`, `float`, `Decimal` | `eq`, `ne`, `gt`, `gte`, `lt`, `lte`, `in`, `nin` | `between` |
 | `bool` | `eq` | `ne` |
 | `datetime`, `date`, `time` | `eq`, `ne`, `gt`, `gte`, `lt`, `lte` | `between` |
@@ -36,6 +36,14 @@ Notes:
 
 - **`regex` is `full`-only** and additionally gated by a config flag, because it
   is a ReDoS and full-scan risk. See *Safety* below.
+- **`contains`/`startswith`/`endswith` values are always `re.escape()`d** before
+  being compiled to Mongo `$regex` (anchored for the `*with` variants). The user
+  value is a literal substring, never a pattern — without this guarantee,
+  `contains` would silently *be* the regex operator, ReDoS included. Pattern
+  matching is exclusively the job of the explicit, gated `regex` operator.
+- **`text_search`** (`full`; requires the backend capability) compiles to a real
+  text query — Mongo `$text` over a text index, `match` in Elasticsearch —
+  instead of a scanning regex. Adapters that lack it reject it at registration.
 - **Case-insensitive variants** (`i*`) are separate operators rather than a flag,
   so they appear explicitly in the docs and compile to explicit backend forms.
 - **`eq` is implicit**: a bare `field=` is treated as `field__eq=`. This keeps the
@@ -71,7 +79,7 @@ from scalar operators. We expose a curated set:
 | `has_any` | contains any of these | `{tags: {$in: [...]}}` |
 | `has_all` | contains all of these | `{tags: {$all: [...]}}` |
 | `len` (`len__gte`, etc.) | array length comparison | `{tags: {$size: n}}` / `$expr` for ranges |
-| `empty` | is empty / non-empty | `{tags: {$size: 0}}` / `{$exists,$not}` |
+| `empty` | is empty / non-empty | see precise spec below |
 
 Query forms:
 
@@ -82,6 +90,17 @@ Query forms:
 ?tags__len__gte=2
 ?tags__empty=false
 ```
+
+Precise `empty` semantics (empty-vs-missing is a classic Mongo trap, so we pin
+it down):
+
+- `?tags__empty=true` → the field exists **and** is the empty array:
+  `{tags: {"$eq": []}}` (equivalent to `$size: 0`, but index-friendlier).
+- `?tags__empty=false` → the field exists and has at least one element:
+  `{"tags.0": {"$exists": true}}`.
+- A **missing** field matches neither. Use `isnull`/`exists` to reason about
+  presence; `empty` reasons only about shape. This distinction is documented on
+  the operator itself.
 
 > Design choice: we do **not** silently apply scalar string operators
 > (`contains`) to `list[str]` — `tags__contains` would be ambiguous (substring of
@@ -107,14 +126,32 @@ notation:
 ?address__city__contains=ams      # field path = address.city, op = contains
 ```
 
-Parsing rule (precise): split the parameter on `__`; the **last segment that is a
-known operator** is the operator, everything before it is a field path; join the
-path segments with `.` for Mongo. If the last segment is *not* a known operator,
-treat the whole thing as a field path with implicit `eq` (so `address__city`
-means `address.city == value`).
+### Parameter matching (precise — there is no request-time parsing)
 
-- **Recursion depth is bounded** (default 2 levels) and configurable, to keep the
-  generated parameter surface finite and the docs readable.
+Because the entire parameter surface is generated from the model at
+registration time, the library **never splits incoming parameter names**. Each
+generated parameter carries its own `(field_path, operator)` pair; an incoming
+name is matched *exactly* against the generated set. `address__city__contains`
+works not because a parser split it correctly, but because registration emitted
+a parameter with that exact name bound to `(("address", "city"), contains)`.
+
+This makes otherwise-nasty cases non-issues by construction:
+
+- Multi-token operators (`len__gte`, `elem`) — the full spelling is just part
+  of the generated name.
+- A field literally named with `__` in it, or a nested field that shares a name
+  with an operator (`address.in`) — the generated name is whatever it is;
+  collisions between two generated names are detected at registration and
+  raised as a config error naming both sources.
+- Unknown incoming parameters are never mis-parsed — they simply don't match,
+  and are handled per the `ignore`/`strict` setting (doc 01).
+
+Generation notes:
+
+- Bare `address__city` (no operator suffix) is emitted as the implicit-`eq`
+  parameter for `address.city`.
+- **Recursion depth is bounded** (default 2 levels) and configurable, to keep
+  the generated parameter surface finite and the docs readable.
 - Cycles (self-referential models) are detected and truncated at the depth limit.
 
 ### `list[NestedModel]` (arrays of embedded documents)
@@ -139,15 +176,24 @@ document this difference loudly because it surprises people. v1 may ship
 
 ### `dict[str, T]` / free-form maps
 
-Limited support: key-presence and value access by known key.
+Free-form maps clash with a core promise: **every parameter is pre-generated,
+typed, and documented in OpenAPI** — which is impossible when the key set is
+unknown. So support is deliberately narrow:
 
-```
-?metadata__has_key=region
-?metadata__region=eu             # value at key 'region'
-```
+- `?metadata__has_key=region` — key presence. This is generatable (one
+  parameter, value typed `str`) and always available when the field is enabled.
+- Value-at-key filtering is available **only for keys enumerated in config**:
 
-Arbitrary-key value filtering is otherwise out of scope (it's effectively a
-schemaless escape hatch). Default: **not filterable** unless explicitly enabled.
+  ```python
+  metadata: Annotated[dict[str, str], Filterable(keys=["region", "tier"])]
+  ```
+
+  generates `metadata__region`, `metadata__tier` (typed as `T`), and nothing
+  else. No enumeration → no value filtering; we do not accept arbitrary
+  `metadata__<anything>` at request time, because those params would be
+  undocumented and untyped.
+
+Default: **not filterable** unless explicitly enabled.
 
 ### `Union[A, B]` (non-optional unions)
 
@@ -250,9 +296,11 @@ Filtering APIs are an unbounded attack/footgun surface. Defaults are conservativ
 - **`regex` off by default** (ReDoS + collection-scan risk). Enable per-field or
   globally with eyes open; when enabled we anchor/length-cap patterns and document
   the risk.
-- **`contains`/`icontains` compile to unanchored regex in Mongo** → collection
-  scans on unindexed fields. We expose this honestly in docs and offer a
-  `text_search` operator that uses a Mongo text index where one exists.
+- **`contains`/`icontains` values are `re.escape()`d** — always, not as an
+  option — so user input is a literal substring, never a pattern. They still
+  compile to unanchored regex in Mongo → collection scans on unindexed fields.
+  We expose this honestly in docs and offer the `text_search` operator, which
+  uses a real Mongo text index where one exists.
 - **`max_list_length`** caps `$in`/`$all` blowups.
 - **`max_filters`** caps the number of simultaneous filters per request.
 - **`max_limit` / `default_limit`** on pagination; an unbounded `limit` is never

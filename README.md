@@ -13,7 +13,7 @@ class User(BaseModel):
     age: int
 
 @app.get("/users")
-async def list_users(q: FilterQuery[User] = FilterDepends()):
+async def list_users(q: FilterQuery[User] = FilterDepends(User)):
     return await db.users.find(q.to_mongo()).to_list(None)
 ```
 
@@ -28,6 +28,7 @@ GET /users?name__contains=ana&age__gte=21&age__lt=65&sort=-age&limit=20
 ```python
 {"name": {"$regex": "ana"}, "age": {"$gte": 21, "$lt": 65}}
 # sort=[("age", -1)], skip=0, limit=20
+# (values in `contains` filters are regex-escaped before compilation)
 ```
 
 …and every one of those parameters is documented, validated and typed in `/docs`.

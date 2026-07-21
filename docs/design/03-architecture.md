@@ -69,63 +69,71 @@ class Operator:
 Operators are extensible: a user (or a backend) can register a custom operator
 without forking the library.
 
-### 3. Parameter generator + the FastAPI signature trick
+### 3. Parameter generator — a dynamic Pydantic query model
 
-This is the one genuinely clever piece, and it's worth getting right because it's
-what makes parameters show up in `/docs` with correct types.
-
-FastAPI builds OpenAPI by **inspecting the callable's signature**. So we
-*synthesize* a function whose parameters are exactly the filter params, then hand
-it to FastAPI as a dependency.
+This is the piece that makes every filter param show up in `/docs` with correct
+types. Since **FastAPI 0.115**, a Pydantic model can be used directly as a
+group of query parameters (`Annotated[Params, Query()]`), which gives us a much
+simpler mechanism than hand-synthesizing function signatures: **generate the
+parameter model with `pydantic.create_model()`** and let FastAPI do the rest.
 
 ```python
-import inspect
-from typing import Optional
+from pydantic import create_model
 from fastapi import Query
+from typing import Annotated, Optional
 
-def build_dependency(specs: list[ResolvedParam]):
-    params = [
-        inspect.Parameter(
-            name=p.python_safe_name,                 # "name__contains"-safe ident
-            kind=inspect.Parameter.KEYWORD_ONLY,
-            default=Query(
+def build_params_model(specs: list[ResolvedParam]) -> type[BaseModel]:
+    fields = {
+        p.python_safe_name: (                        # sanitized identifier
+            Optional[p.value_annotation],            # drives type + validation
+            Field(
                 None,
                 alias=p.url_name,                    # the real "name__contains"
                 description=p.help_text,             # shows in /docs
                 # constraints (max_length, ge/le) flow from the field/operator
             ),
-            annotation=Optional[p.value_annotation], # drives type + validation
         )
         for p in specs
-    ]
-    # pagination + sort params appended here
+    }
+    # pagination + sort fields appended here
+    return create_model("FilterParams", **fields)
 
-    def dependency(**kwargs):
-        return FilterQuery.from_raw(kwargs, specs)   # parse → validate → AST
-
-    dependency.__signature__ = inspect.Signature(params)
+def build_dependency(specs, params_model):
+    def dependency(raw: Annotated[params_model, Query()]) -> FilterQuery:
+        return FilterQuery.from_params(raw, specs)   # validated → AST
     return dependency
 ```
 
 Key points:
 
-- Each param is `Optional[T]` with default `Query(None, alias=..., description=...)`.
-  Because the annotation is the real type, **FastAPI/Pydantic do the coercion and
-  emit a clean 422** on bad input — we get validation for free.
-- `alias` carries the `__`-containing public name (which isn't a valid Python
-  identifier); the internal parameter name is a sanitized identifier.
-- List operators are annotated `Optional[list[T]]` so repeated/`,`-joined values
-  parse natively; range/`between` use a small custom type with a validator.
-- The synthesized signature means **OpenAPI/Swagger shows every filter param**,
-  grouped and described, with no manual schema writing.
+- Each field is `Optional[T]` with an `alias` carrying the `__`-containing
+  public name (not a valid Python identifier); the internal field name is
+  sanitized. Because the annotation is the real type, **FastAPI/Pydantic do the
+  coercion and emit a clean 422** on bad input — validation for free.
+- List operators are annotated `Optional[list[T]]` so repeated/`,`-joined
+  values parse natively; range/`between` use a small custom type with a
+  validator.
+- **OpenAPI/Swagger shows every filter param**, described and typed, with no
+  manual schema writing.
+- The generated model is also a public artifact: users can import it in tests
+  and clients can be code-generated from the OpenAPI schema.
 
-This generation is **memoized per (model, config)** so it runs once, not per
-request.
+**Fallback:** for FastAPI versions older than 0.115 (or if the query-model path
+hits limitations, e.g. around per-field alias handling), the same `specs` can
+be rendered as a synthesized function signature (`inspect.Parameter` list with
+`Query(None, alias=...)` defaults, assigned to `dependency.__signature__`) —
+FastAPI builds OpenAPI by inspecting the callable's signature, so both routes
+produce identical docs. The spec list is the source of truth; the rendering is
+an implementation detail we can swap. A spike in Phase 1 decides the primary
+mechanism and the minimum supported FastAPI version.
+
+Either way, generation is **memoized per (model, config)** so it runs once, not
+per request.
 
 ### 4. Parser → FilterAST
 
-At request time the dependency receives the parsed kwargs (already type-coerced)
-and builds the neutral AST. The AST is the **contract** between the front half
+At request time the dependency receives the validated parameter model (already
+type-coerced) and builds the neutral AST. The AST is the **contract** between the front half
 (HTTP/Pydantic) and the back half (databases).
 
 ```python

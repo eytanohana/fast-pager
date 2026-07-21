@@ -17,17 +17,25 @@ We use Django's double-underscore convention: `<field>__<operator>=<value>`.
 Why double underscore and not single (`age_gt`)?
 
 - Single underscore is **ambiguous** the moment a field is named `created_at` or
-  `is_active`. Is `created_at__gte` the field `created` with op `at__gte`? Double
-  underscore as a *separator token* removes the ambiguity: split on the **last**
-  `__`, the right side must be a known operator, everything left is the field path.
+  `is_active` — is `created_at_gte` the field `created` with op `at_gte`? Double
+  underscore as a *separator token* removes most of that ambiguity.
 - It is the de-facto Python convention (Django ORM, MongoEngine, django-filter),
   so it reads as "filtering" to the audience immediately.
 
+Importantly, `__` is a *naming convention*, **not a request-time parsing rule**.
+Every legal parameter name is generated ahead of time from the model, so an
+incoming parameter is matched **exactly** against that pre-generated set — the
+library never has to guess how to split a string (see doc 02, *Parameter
+matching*). This sidesteps edge cases like field names that themselves contain
+`__` or nested fields that happen to share a name with an operator.
+
 Bare equality keeps the natural form: `name=alice` is sugar for `name__eq=alice`.
 
-> The user's prompt wrote `age_gt`/`age_le` with a single underscore. We
+> Some teams prefer single-underscore spellings (`age_gt`, `age_le`). We
 > deliberately recommend `__` for the reasons above, but the separator is a
-> **global config knob** (`FilterConfig(separator="__")`) for teams who insist.
+> **global config knob** (`FilterConfig(separator="__")`) for teams who insist —
+> safe precisely because parameters are matched against a pre-generated set,
+> not parsed.
 
 Operator spellings follow Mongo/Django for muscle memory: `gte`, `lte`, `gt`,
 `lt`, `ne`, `in`, `nin`, `contains`, `startswith`, `regex`, … (full table in doc 02).
@@ -49,7 +57,7 @@ class User(BaseModel):
 
 ```python
 @app.get("/users")
-async def list_users(q: FilterQuery[User] = FilterDepends()):
+async def list_users(q: FilterQuery[User] = FilterDepends(User)):
     return await db.users.find(q.to_mongo()).to_list(None)
 ```
 
@@ -85,7 +93,7 @@ class UserFilter(FilterSet):
         }
 
 @app.get("/users")
-async def list_users(q: UserFilter = FilterDepends()):
+async def list_users(q: UserFilter = FilterDepends(UserFilter)):
     return await db.users.find(q.to_mongo()).to_list(None)
 ```
 
@@ -107,7 +115,7 @@ No annotations, no filterset. Infer safe defaults purely from field types.
 
 ```python
 @app.get("/users")
-async def list_users(q: FilterQuery[User] = FilterDepends()):
+async def list_users(q: FilterQuery[User] = FilterDepends(User)):
     ...
 ```
 
@@ -129,11 +137,32 @@ profiles, and make graduating to A/B additive (no rewrite).
 
 ---
 
-## The unifying mechanism: `FilterDepends()`
+## The unifying mechanism: `FilterDepends(...)`
 
 All three options resolve to the same runtime object via a FastAPI dependency.
-The dependency is what makes parameters appear in `/docs` (see doc 03 for the
-signature trick). The returned object is uniform regardless of how it was declared:
+The dependency is what makes parameters appear in `/docs` (see doc 03).
+
+**Why the model/filterset is passed explicitly** — `FilterDepends(User)`, not
+`FilterDepends()`: FastAPI resolves a dependency from the callable in the
+parameter's *default value* (or in `Depends(...)` inside `Annotated`), and that
+callable never sees the parameter's type annotation. A bare `FilterDepends()`
+therefore has no way to discover the model. The annotation
+(`FilterQuery[User]`) still matters — it types the object for your editor and
+mypy — but the source of truth for generation is the argument. The
+`Annotated` idiom works too, and avoids stating the model twice:
+
+```python
+UserQuery = Annotated[FilterQuery[User], FilterDepends(User)]
+
+@app.get("/users")
+async def list_users(q: UserQuery):
+    ...
+```
+
+`FilterDepends` validates at registration time that the annotation and the
+argument agree, so the two can never silently drift.
+
+The returned object is uniform regardless of how it was declared:
 
 ```python
 q.to_mongo()        # -> dict ready for pymongo/motor .find()
@@ -165,7 +194,10 @@ GET /users?sort=-age,name&limit=20&offset=40
   - `page` / `page_size` (sugar over offset).
   - `cursor` (keyset pagination over a sort key) — phase 3; far better for deep
     pages and large collections, but needs an opaque cursor token. Designed for,
-    not shipped in v1.
+    not shipped in v1. Keyset pagination requires a **total order**: the library
+    appends a unique tiebreaker (`_id` for Mongo, the primary key for SQL) to
+    the user's sort key automatically, otherwise rows with equal sort values
+    would be skipped or duplicated across pages.
 
 Each strategy has guardrails: `max_limit`, `default_limit`. (See doc 02 safety.)
 
@@ -178,7 +210,7 @@ is a paginated envelope with a total count. We offer an opt-in helper:
 
 ```python
 @app.get("/users", response_model=Page[User])
-async def list_users(q: FilterQuery[User] = FilterDepends()):
+async def list_users(q: FilterQuery[User] = FilterDepends(User)):
     return await q.paginate(db.users)   # runs find + count, returns Page[User]
 ```
 
@@ -194,6 +226,15 @@ async def list_users(q: FilterQuery[User] = FilterDepends()):
 `Page[T]` is a generic Pydantic model so `response_model` and the OpenAPI schema
 stay correct. This is a convenience, never a requirement — `to_mongo()` always
 remains available for full control.
+
+**The count is not free.** An exact `total` runs `count_documents` (or
+`SELECT COUNT(*)`) with the same filter on every page request, which is
+expensive on large collections. So `total` is `Optional[int]` in `Page[T]` and
+the cost is a knob: `paginate(..., total="exact" | "estimated" | "none")` —
+`estimated` uses `estimatedDocumentCount` where the backend offers it (only
+valid for unfiltered queries; the library falls back to `exact` or `none` and
+says so), and `none` skips the count entirely (the right default for
+infinite-scroll UIs and a natural fit with cursor pagination).
 
 ---
 
@@ -220,7 +261,8 @@ remains available for full control.
 3. **Graduate to `FilterSet`** (Option B) for decoupling, multiple views per model,
    and custom/computed filters.
 
-All three share `FilterDepends()` and the uniform `q` object. You never rewrite a
-call site to move up the ladder — that property is the heart of the DX.
+All three share `FilterDepends(...)` and the uniform `q` object. Moving up the
+ladder only changes the argument (`User` → `UserFilter`) — that property is the
+heart of the DX.
 
 Continue to **[02 — Type & Operator System](02-type-and-operator-system.md)**.
