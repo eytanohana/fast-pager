@@ -42,6 +42,35 @@ Claude Code). Design documents and code are AI-generated and human-reviewed.
 
 ---
 
+## Status
+
+`fast-pager` is in the **design phase**. The package is published to PyPI as a
+placeholder (`0.0.x`) to reserve the name — it contains no functionality yet.
+Don't depend on it until `0.1`.
+
+## Releasing (maintainers)
+
+Releases are fully automated. From a clean `main`:
+
+```bash
+./scripts/release.sh patch     # or minor / major
+```
+
+The script bumps the version in `pyproject.toml` (via `uv version --bump`),
+commits, tags `v<version>`, and pushes. The tag triggers
+[`release.yml`](.github/workflows/release.yml), which:
+
+1. verifies the tag matches the `pyproject.toml` version,
+2. runs the full CI matrix,
+3. builds with `uv build` and publishes to PyPI via **Trusted Publishing**
+   (OIDC — no API tokens),
+4. creates the GitHub Release with generated notes.
+
+`fast_pager.__version__` reads from package metadata, so the version lives in
+exactly one place.
+
+---
+
 ## Design documents
 
 This repository currently contains **only the product design** — no implementation yet.
