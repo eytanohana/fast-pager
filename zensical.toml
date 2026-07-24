@@ -1,0 +1,160 @@
+# ============================================================================
+# Zensical configuration for the fast-pager documentation site.
+#
+# Zensical is the static site generator from the creators of Material for
+# MkDocs (https://zensical.org). This file follows the format documented at
+# https://zensical.org/docs/setup/basics/ and the sections below link to the
+# specific page that explains each setting.
+#
+# `docs/` is the docs_dir (Zensical's default, so it isn't set explicitly).
+# See docs/contributing/docs-site.md for how this file is organized and how
+# to preview/build/deploy the site.
+# ============================================================================
+
+[project]
+
+site_name = "fast-pager"
+site_description = "Turn your Pydantic models into filterable, sortable, paginated FastAPI query parameters — automatically."
+site_author = "Eytan Ohana"
+
+# Canonical URL once deployed to GitHub Pages (org.github.io/repo/ form).
+# https://zensical.org/docs/setup/basics/#site_url
+site_url = "https://eytanohana.github.io/fast-pager/"
+
+copyright = """
+Copyright &copy; 2026 Eytan Ohana
+"""
+
+# https://zensical.org/docs/setup/repository/
+repo_url = "https://github.com/eytanohana/fast-pager"
+repo_name = "eytanohana/fast-pager"
+# The repo's default branch is "main", not Zensical's assumed "master", and
+# docs_dir is "docs" (the default), so the edit link needs both spelled out.
+# https://zensical.org/docs/setup/repository/#edit_uri
+edit_uri = "edit/main/docs/"
+
+# Explicit navigation. Without this Zensical would derive nav from the
+# directory structure, but an explicit list keeps ordering deliberate (e.g.
+# Tutorial before Reference) and lets us title pages independently of their
+# filenames. https://zensical.org/docs/setup/navigation/
+nav = [
+  { "Home" = "index.md" },
+  { "Getting Started" = "getting-started.md" },
+  { "Tutorial" = [
+      "tutorial/filtering.md",
+      "tutorial/sorting-pagination.md",
+  ] },
+  { "Reference" = [
+      "reference/operators.md",
+  ] },
+  { "Design" = [
+      "design/index.md",
+      "design/00-overview.md",
+      "design/01-developer-experience.md",
+      "design/02-type-and-operator-system.md",
+      "design/03-architecture.md",
+      "design/04-backend-roadmap.md",
+      "design/05-roadmap-and-release.md",
+  ] },
+  { "Contributing" = [
+      "contributing/docs-site.md",
+  ] },
+  { "Changelog" = "changelog.md" },
+]
+
+[project.theme]
+
+# https://zensical.org/docs/setup/language/
+language = "en"
+
+# https://zensical.org/docs/setup/logo-and-icons
+[project.theme.icon]
+logo = "lucide/list-filter-plus"
+
+features = [
+  # Repository content actions (edit this page) — needs repo_url above.
+  # https://zensical.org/docs/setup/repository/#content-actions
+  "content.action.edit",
+
+  # https://zensical.org/docs/authoring/code-blocks/#code-copy-button
+  "content.code.copy",
+  # https://zensical.org/docs/authoring/code-blocks/#code-annotations
+  "content.code.annotate",
+  # https://zensical.org/docs/authoring/code-blocks/#code-selection-button
+  "content.code.select",
+
+  # Keep same-language content tabs in sync across the page.
+  # https://zensical.org/docs/authoring/content-tabs/#linked-content-tabs
+  "content.tabs.link",
+
+  # Section index pages, used by the "Design" section (design/index.md).
+  # https://zensical.org/docs/setup/navigation/#section-index-pages
+  "navigation.indexes",
+  # Render top-level nav sections as sidebar groups on wide viewports.
+  # https://zensical.org/docs/setup/navigation/#navigation-sections
+  "navigation.sections",
+  # Back-to-top button.
+  # https://zensical.org/docs/setup/navigation/#back-to-top-button
+  "navigation.top",
+  # Keep the address bar's anchor in sync while scrolling.
+  # https://zensical.org/docs/setup/navigation/#anchor-tracking
+  "navigation.tracking",
+  # Prev/next links in the footer.
+  # https://zensical.org/docs/setup/footer/#navigation
+  "navigation.footer",
+
+  # https://zensical.org/docs/setup/search/#search-highlighting
+  "search.highlight",
+]
+
+# https://zensical.org/docs/setup/colors/
+[[project.theme.palette]]
+scheme = "default"
+toggle.icon = "lucide/sun"
+toggle.name = "Switch to dark mode"
+
+[[project.theme.palette]]
+scheme = "slate"
+toggle.icon = "lucide/moon"
+toggle.name = "Switch to light mode"
+
+[[project.extra.social]]
+icon = "fontawesome/brands/github"
+link = "https://github.com/eytanohana/fast-pager"
+
+# ----------------------------------------------------------------------------
+# Markdown extensions — same set Zensical ships by default (see
+# `zensical new`'s template), kept explicit here so it's obvious what's on.
+# https://zensical.org/docs/setup/extensions/
+# ----------------------------------------------------------------------------
+[project.markdown_extensions.abbr]
+[project.markdown_extensions.admonition]
+[project.markdown_extensions.attr_list]
+[project.markdown_extensions.def_list]
+[project.markdown_extensions.footnotes]
+[project.markdown_extensions.md_in_html]
+[project.markdown_extensions.tables]
+[project.markdown_extensions.toc]
+permalink = true
+[project.markdown_extensions.pymdownx.betterem]
+[project.markdown_extensions.pymdownx.caret]
+[project.markdown_extensions.pymdownx.details]
+[project.markdown_extensions.pymdownx.emoji]
+emoji_generator = "zensical.extensions.emoji.to_svg"
+emoji_index = "zensical.extensions.emoji.twemoji"
+[project.markdown_extensions.pymdownx.highlight]
+anchor_linenums = true
+line_spans = "__span"
+pygments_lang_class = true
+[project.markdown_extensions.pymdownx.inlinehilite]
+[project.markdown_extensions.pymdownx.keys]
+[project.markdown_extensions.pymdownx.magiclink]
+[project.markdown_extensions.pymdownx.mark]
+[project.markdown_extensions.pymdownx.smartsymbols]
+[project.markdown_extensions.pymdownx.superfences]
+[project.markdown_extensions.pymdownx.tabbed]
+alternate_style = true
+combine_header_slug = true
+[project.markdown_extensions.pymdownx.tasklist]
+custom_checkbox = true
+[project.markdown_extensions.pymdownx.tilde]

@@ -6,6 +6,9 @@ __pycache__/
 build/
 dist/
 
+# Docs site (Zensical build output)
+site/
+
 # Environments
 .venv/
 venv/
