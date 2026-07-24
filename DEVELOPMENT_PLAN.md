@@ -41,7 +41,9 @@ Stage 1 deliverable.
 | Version | Stage | Headline |
 |---|---|---|
 | `0.0.1` | 0 | ✅ Name reserved on PyPI; CI + release automation |
-| `0.1.0` | 1 | Core pipeline + Mongo backend, scalar fields, zero-config `FilterQuery`; **docs site live** |
+| `0.0.2` | 1 (checkpoint) | Core engine: AST, operator registry, introspection, Mongo compiler — usable programmatically |
+| `0.0.3` | 1 (checkpoint) | FastAPI integration: `FilterDepends`/`FilterQuery`, pagination + sorting — the README demo works |
+| `0.1.0` | 1 | Stage 1 complete: exit criteria green, **docs site live**, polish |
 | `0.2.0` | 2 | Per-field control: `Annotated[T, Filterable(...)]`, strict mode |
 | `0.3.0` | 3 | `FilterSet` + compound types (arrays, nested models, `elem`) |
 | `0.4.0` | 4 | `Page[T]` envelope, `paginate()` helpers, count modes |
@@ -49,7 +51,15 @@ Stage 1 deliverable.
 | `0.6.0` | 6 | Cursor/keyset pagination + adapter authoring guide |
 | `1.0.0` | 7 | API freeze, security/perf hardening, complete docs |
 
-Patch releases (`0.x.y`) ship bug fixes between stages as needed.
+Patch releases (`0.x.y`) ship bug fixes between stages as needed. Larger
+stages may add intermittent checkpoint releases (as Stage 1 does with
+`0.0.2`/`0.0.3`) when a coherent, working slice lands early — decided
+per-stage with maintainer approval like any release.
+
+**Commit discipline:** work lands as small, human-reviewable commits — one
+logical unit per commit (a module with its tests, a workflow, a docs
+section), conventional-commit messages. Bulk "implement everything" commits
+are not acceptable, including when the work was produced by an AI agent.
 
 ---
 
