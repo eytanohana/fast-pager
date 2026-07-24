@@ -1,5 +1,9 @@
 # fast-pager
 
+[![PyPI version](https://img.shields.io/pypi/v/fast-pager.svg)](https://pypi.org/project/fast-pager/)
+[![CI](https://github.com/eytanohana/fast-pager/actions/workflows/ci.yml/badge.svg)](https://github.com/eytanohana/fast-pager/actions/workflows/ci.yml)
+[![Docs](https://img.shields.io/badge/docs-eytanohana.github.io%2Ffast--pager-blue)](https://eytanohana.github.io/fast-pager/)
+
 > Turn your Pydantic models into filterable, sortable, paginated FastAPI query parameters — automatically.
 
 `fast-pager` reads the Pydantic models you already use in your FastAPI routes and
@@ -47,6 +51,15 @@ Claude Code). Design documents and code are AI-generated and human-reviewed.
 `fast-pager` is in the **design phase**. The package is published to PyPI as a
 placeholder (`0.0.x`) to reserve the name — it contains no functionality yet.
 Don't depend on it until `0.1`.
+
+## Documentation
+
+The full documentation site — getting started, tutorials, operator
+reference, and the design documents below — lives at
+**[eytanohana.github.io/fast-pager](https://eytanohana.github.io/fast-pager/)**.
+It's built with [Zensical](https://zensical.org) from `docs/`; see
+[`docs/contributing/docs-site.md`](docs/contributing/docs-site.md) for how
+it's configured and how to preview it locally.
 
 ## Releasing (maintainers)
 
