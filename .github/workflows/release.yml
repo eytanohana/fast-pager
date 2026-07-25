@@ -7,6 +7,10 @@ on:
 
 env:
   UV_VERSION: "0.11.16"
+  # zensical.org's mkdocs-material-compatible mike fork — not published to
+  # PyPI (upstream requires installing from git; see docs/contributing/docs-site.md).
+  # Pinned to a commit for reproducibility.
+  MIKE_ZENSICAL_REF: "2d4ad799442f4592db8ad53b179bfb33db8c69ac"
 
 jobs:
   check-tag-matches-version:
@@ -72,3 +76,48 @@ jobs:
           gh release create "$tag" \
             --notes $'## Release Notes\nReleased on '"$(date -u +%Y-%m-%d)"$'\n\n' \
             --generate-notes
+
+  deploy-docs:
+    name: Deploy Docs (versioned)
+    runs-on: ubuntu-latest
+    needs: [ check-tag-matches-version, run-ci ]
+
+    permissions:
+      contents: write   # mike pushes to gh-pages using GITHUB_TOKEN
+
+    steps:
+      - name: Checkout repository (full history)
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd  # v5
+        with:
+          fetch-depth: 0
+
+      - name: Set up uv and Python
+        uses: astral-sh/setup-uv@681c641aba71e4a1c380be3ab5e12ad51f415867  # v7
+        with:
+          enable-cache: true
+          version: ${{ env.UV_VERSION }}
+
+      - name: Install docs dependencies
+        run: uv sync --locked --only-group docs
+
+      - name: Install Zensical-compatible mike
+        # The "mike" entry in pyproject.toml's docs group resolves to the
+        # PyPI package, which only knows how to build via mkdocs and can't
+        # drive a Zensical build. Override it with squidfunk/mike, a fork
+        # that shells out to `zensical build` instead (see
+        # docs/contributing/docs-site.md for why this two-step install
+        # exists and a link to Zensical's versioning roadmap).
+        run: |
+          uv pip install --python .venv \
+            "mike @ git+https://github.com/squidfunk/mike.git@${{ env.MIKE_ZENSICAL_REF }}"
+
+      - name: Configure git identity for gh-pages commits
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Deploy docs for this tag
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"   # v0.5.4 -> 0.5.4
+          uv run mike deploy --push --branch gh-pages --update-aliases "$VERSION" latest
+          uv run mike set-default --push --branch gh-pages latest
