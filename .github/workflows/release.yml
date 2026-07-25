@@ -82,6 +82,13 @@ jobs:
     runs-on: ubuntu-latest
     needs: [ check-tag-matches-version, run-ci ]
 
+    # Serialize all gh-pages pushes across workflows: a release tag and its
+    # main-branch push otherwise run mike concurrently and one push loses
+    # the race (non-fast-forward rejection).
+    concurrency:
+      group: gh-pages-deploy
+      cancel-in-progress: false
+
     permissions:
       contents: write   # mike pushes to gh-pages using GITHUB_TOKEN
 

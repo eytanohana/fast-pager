@@ -47,6 +47,11 @@ jobs:
     needs: build
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
+    # Shared with release.yml's deploy-docs job — serializes gh-pages
+    # pushes so a release tag and its main push can't race mike deploys.
+    concurrency:
+      group: gh-pages-deploy
+      cancel-in-progress: false
     permissions:
       contents: write   # mike pushes to gh-pages using GITHUB_TOKEN
     steps:
