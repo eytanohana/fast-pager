@@ -127,6 +127,14 @@ produce identical docs. The spec list is the source of truth; the rendering is
 an implementation detail we can swap. A spike in Phase 1 decides the primary
 mechanism and the minimum supported FastAPI version.
 
+> **Spike result (2026-07):** the native query-model path works as designed on
+> FastAPI 0.140 / Pydantic 2.13 — `create_model()` fields with `__`-containing
+> aliases resolve correctly under `Annotated[Model, Query()]`, list params accept
+> both repeated keys and comma-joined values (via a `BeforeValidator` split),
+> bad values yield standard 422s, and every aliased param appears typed in
+> `/openapi.json`. The native path is the primary mechanism; the synthesized
+> `inspect.Signature` fallback was not needed. Minimum FastAPI stays ≥ 0.115.
+
 Either way, generation is **memoized per (model, config)** so it runs once, not
 per request.
 
