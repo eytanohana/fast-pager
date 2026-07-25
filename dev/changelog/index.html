@@ -394,6 +394,35 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../tutorial/controlling-fields/" class="md-nav__link">
+        
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-sliders-horizontal" viewBox="0 0 24 24"><path d="M10 5H3M12 19H3M14 3v4M16 17v4M21 12h-9M21 19h-5M21 5h-7M8 10v4M8 12H3"/></svg>
+  
+  <span class="md-ellipsis">
+    
+  
+  Controlling the filter surface
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -876,6 +905,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#003-stage-2-checkpoint-per-field-control" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        <code>0.0.3</code> — Stage 2 checkpoint: per-field control
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#002-stage-1-checkpoint-the-core-works" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -957,6 +997,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#003-stage-2-checkpoint-per-field-control" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        <code>0.0.3</code> — Stage 2 checkpoint: per-field control
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#002-stage-1-checkpoint-the-core-works" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -1013,6 +1064,21 @@ unstable API, and breaking changes bump the minor version and are called out
 below. See the <a href="../design/05-roadmap-and-release/">Roadmap</a> for what's coming
 next, and the <a href="https://github.com/eytanohana/fast-pager/blob/main/DEVELOPMENT_PLAN.md">development plan</a>
 for the execution detail behind each stage.</p>
+<h2 id="003-stage-2-checkpoint-per-field-control"><code>0.0.3</code> — Stage 2 checkpoint: per-field control<a class="headerlink" href="#003-stage-2-checkpoint-per-field-control" title="Permanent link">&para;</a></h2>
+<p>The filter surface is now curatable. <code>Annotated[T, Filterable(...)]</code>
+metadata on the model controls each field: <code>ops=[...]</code> for an exact operator
+allow-list (with <code>ops.ALL</code> / <code>ops.NONE</code> markers, the latter making a field
+explicitly unfilterable), <code>source=</code> to point the compiled Mongo query at a
+different document key, <code>param=</code> to rename the public URL parameter, and
+<code>sortable=</code> to override sortability per field (including sort-only fields).
+<code>FilterConfig</code> grows <code>type_profiles={...}</code> for per-type operator overrides
+and <code>unknown_params="strict"</code> — a standard 422 on unrecognized <code>field__op</code>
+parameters instead of silently ignoring them. Precedence is a four-layer
+ladder (route per-field &gt; field <code>Filterable</code> &gt; per-type profile &gt; global
+profile), every misconfiguration still fails at route registration, and the
+error messages now name the field, the operator, and the valid alternatives.
+See the new <a href="../tutorial/controlling-fields/">Controlling the filter surface</a>
+tutorial. 100% test coverage, <code>mypy --strict</code> clean.</p>
 <h2 id="002-stage-1-checkpoint-the-core-works"><code>0.0.2</code> — Stage 1 checkpoint: the core works<a class="headerlink" href="#002-stage-1-checkpoint-the-core-works" title="Permanent link">&para;</a></h2>
 <p>The README example is real: zero-config <code>FilterQuery[Model]</code> /
 <code>FilterDepends(Model)</code> for <strong>scalar fields</strong> (<code>str</code>, numerics, <code>bool</code>,
@@ -1030,10 +1096,12 @@ the repository has CI + fully automated release tooling
 but <strong>no library functionality yet</strong>. Nothing in this documentation site is
 installable against <code>0.0.1</code> — see <a href="../getting-started/">Getting Started</a>.</p>
 <h2 id="coming-in-v010">Coming in <code>v0.1.0</code><a class="headerlink" href="#coming-in-v010" title="Permanent link">&para;</a></h2>
-<p>The first functional release: the core filter → sort → paginate pipeline,
-a MongoDB query compiler, zero-config <code>FilterQuery[Model]</code> /
-<code>FilterDepends(Model)</code> for scalar fields, and this documentation site. Most
-of the content on this site describes this upcoming release. Tracked in
+<p>Stages 1–2 finalized: the core filter → sort → paginate pipeline, the
+MongoDB query compiler, zero-config <code>FilterQuery[Model]</code> /
+<code>FilterDepends(Model)</code> for scalar fields, per-field <code>Filterable(...)</code>
+control, per-type profiles, strict mode, and this documentation site —
+polished, with the docs describing exactly the shipped API. Most of the
+content on this site describes this upcoming release. Tracked in
 <a href="../design/05-roadmap-and-release/">design doc 05 — Roadmap &amp; Release Plan</a>.</p>
 
 

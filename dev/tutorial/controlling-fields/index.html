@@ -12,13 +12,13 @@
         <meta name="author" content="Eytan Ohana">
       
       
-        <link rel="canonical" href="https://eytanohana.github.io/fast-pager/dev/tutorial/sorting-pagination/">
+        <link rel="canonical" href="https://eytanohana.github.io/fast-pager/dev/tutorial/controlling-fields/">
       
       
-        <link rel="prev" href="../filtering/">
+        <link rel="prev" href="../sorting-pagination/">
       
       
-        <link rel="next" href="../controlling-fields/">
+        <link rel="next" href="../../reference/operators/">
       
       
         
@@ -29,7 +29,7 @@
     
     
       
-        <title>Sorting & Pagination - fast-pager</title>
+        <title>Controlling the filter surface - fast-pager</title>
       
     
     
@@ -85,7 +85,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#sorting-pagination" class="md-skip">
+        <a href="#controlling-the-filter-surface" class="md-skip">
           Skip to content
         </a>
       
@@ -125,7 +125,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Sorting &amp; Pagination
+              Controlling the filter surface
             
           </span>
         </div>
@@ -373,6 +373,35 @@
                 
   
   
+  
+  
+    <li class="md-nav__item">
+      <a href="../sorting-pagination/" class="md-nav__link">
+        
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-arrow-up-down" viewBox="0 0 24 24"><path d="m21 16-4 4-4-4M17 20V4M3 8l4-4 4 4M7 4v16"/></svg>
+  
+  <span class="md-ellipsis">
+    
+  
+  Sorting &amp; Pagination
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
     
   
   
@@ -389,12 +418,12 @@
           
   
   
-    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-arrow-up-down" viewBox="0 0 24 24"><path d="m21 16-4 4-4-4M17 20V4M3 8l4-4 4 4M7 4v16"/></svg>
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-sliders-horizontal" viewBox="0 0 24 24"><path d="M10 5H3M12 19H3M14 3v4M16 17v4M21 12h-9M21 19h-5M21 5h-7M8 10v4M8 12H3"/></svg>
   
   <span class="md-ellipsis">
     
   
-  Sorting &amp; Pagination
+  Controlling the filter surface
 
     
   </span>
@@ -408,12 +437,12 @@
         
   
   
-    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-arrow-up-down" viewBox="0 0 24 24"><path d="m21 16-4 4-4-4M17 20V4M3 8l4-4 4 4M7 4v16"/></svg>
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-sliders-horizontal" viewBox="0 0 24 24"><path d="M10 5H3M12 19H3M14 3v4M16 17v4M21 12h-9M21 19h-5M21 5h-7M8 10v4M8 12H3"/></svg>
   
   <span class="md-ellipsis">
     
   
-  Sorting &amp; Pagination
+  Controlling the filter surface
 
     
   </span>
@@ -439,10 +468,71 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#sorting" class="md-nav__link">
+  <a href="#filterable-declare-it-on-the-field" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Sorting
+        <code>Filterable</code>: declare it on the field
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Filterable: declare it on the field">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ops-an-exact-operator-allow-list" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        <code>ops=[...]</code> — an exact operator allow-list
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#source-a-different-backend-field-name" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        <code>source=</code> — a different backend field name
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#param-a-different-url-parameter-name" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        <code>param=</code> — a different URL parameter name
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sortable-per-field-sort-control" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        <code>sortable=</code> — per-field sort control
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#filterconfigtype_profiles-per-type-overrides" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        <code>FilterConfig(type_profiles=...)</code>: per-type overrides
       </span>
     </span>
   </a>
@@ -450,10 +540,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#pagination" class="md-nav__link">
+  <a href="#the-precedence-ladder" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Pagination
+        The precedence ladder
       </span>
     </span>
   </a>
@@ -461,10 +551,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#optional-a-paginated-response-envelope" class="md-nav__link">
+  <a href="#strict-unknown-parameter-mode" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Optional: a paginated response envelope
+        Strict unknown-parameter mode
       </span>
     </span>
   </a>
@@ -486,35 +576,6 @@
   
 </nav>
       
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../controlling-fields/" class="md-nav__link">
-        
-  
-  
-    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-sliders-horizontal" viewBox="0 0 24 24"><path d="M10 5H3M12 19H3M14 3v4M16 17v4M21 12h-9M21 19h-5M21 5h-7M8 10v4M8 12H3"/></svg>
-  
-  <span class="md-ellipsis">
-    
-  
-  Controlling the filter surface
-
-    
-  </span>
-  
-  
-
-      </a>
     </li>
   
 
@@ -1001,10 +1062,71 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#sorting" class="md-nav__link">
+  <a href="#filterable-declare-it-on-the-field" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Sorting
+        <code>Filterable</code>: declare it on the field
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Filterable: declare it on the field">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ops-an-exact-operator-allow-list" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        <code>ops=[...]</code> — an exact operator allow-list
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#source-a-different-backend-field-name" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        <code>source=</code> — a different backend field name
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#param-a-different-url-parameter-name" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        <code>param=</code> — a different URL parameter name
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sortable-per-field-sort-control" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        <code>sortable=</code> — per-field sort control
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#filterconfigtype_profiles-per-type-overrides" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        <code>FilterConfig(type_profiles=...)</code>: per-type overrides
       </span>
     </span>
   </a>
@@ -1012,10 +1134,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#pagination" class="md-nav__link">
+  <a href="#the-precedence-ladder" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Pagination
+        The precedence ladder
       </span>
     </span>
   </a>
@@ -1023,10 +1145,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#optional-a-paginated-response-envelope" class="md-nav__link">
+  <a href="#strict-unknown-parameter-mode" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Optional: a paginated response envelope
+        Strict unknown-parameter mode
       </span>
     </span>
   </a>
@@ -1062,78 +1184,191 @@
   
 
 
-<h1 id="sorting-pagination">Sorting &amp; Pagination<a class="headerlink" href="#sorting-pagination" title="Permanent link">&para;</a></h1>
+<h1 id="controlling-the-filter-surface">Controlling the filter surface<a class="headerlink" href="#controlling-the-filter-surface" title="Permanent link">&para;</a></h1>
 <div class="admonition warning">
-<p class="admonition-title">Targeting v0.1.0</p>
-<p>This tutorial describes the <code>v0.1.0</code> API. See
-<a href="../../getting-started/">Getting Started</a> for install status.</p>
+<p class="admonition-title">Targeting v0.0.3</p>
+<p>This page describes the per-field control API shipping in <code>v0.0.3</code>
+(Stage 2). See the <a href="../../changelog/">Changelog</a> for what's actually
+released.</p>
 </div>
-<p>Sorting and pagination ride on the same <code>FilterDepends(...)</code> dependency as
-filtering — they're the other two hats a list endpoint wears (see
-<a href="../../design/00-overview/#why-the-name-is-fast-pager">the overview</a>), so they
-share the same <code>q</code> object instead of being separate dependencies to wire up.</p>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>GET /users?sort=-age,name&amp;limit=20&amp;offset=40
+<p>Zero-config <code>FilterDepends(Model)</code> exposes every supported field with its
+type's <code>safe</code> operator profile. That's the right starting point — but real
+APIs need to curate: exact-match-only emails, unfilterable secrets, a Mongo
+field named differently from the model, a friendlier URL parameter. This
+page covers the two tools for that: <strong><code>Filterable</code></strong> metadata on the model
+and <strong><code>FilterConfig</code></strong> on the route.</p>
+<h2 id="filterable-declare-it-on-the-field"><code>Filterable</code>: declare it on the field<a class="headerlink" href="#filterable-declare-it-on-the-field" title="Permanent link">&para;</a></h2>
+<p>Attach metadata where the field is declared, with <code>Annotated</code>:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Annotated</span>
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">pydantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">BaseModel</span>
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="kn">from</span><span class="w"> </span><span class="nn">fast_pager</span><span class="w"> </span><span class="kn">import</span> <span class="n">Filterable</span><span class="p">,</span> <span class="n">ops</span>
+</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>
+</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="k">class</span><span class="w"> </span><span class="nc">User</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>    <span class="n">name</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Filterable</span><span class="p">(</span><span class="n">ops</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;contains&quot;</span><span class="p">,</span> <span class="s2">&quot;eq&quot;</span><span class="p">])]</span>
+</span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>    <span class="n">slug</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Filterable</span><span class="p">(</span><span class="n">ops</span><span class="o">=</span><span class="n">ops</span><span class="o">.</span><span class="n">ALL</span><span class="p">)]</span>
+</span><span id="__span-0-8"><a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>    <span class="n">age</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">Filterable</span><span class="p">(</span><span class="n">source</span><span class="o">=</span><span class="s2">&quot;ageYears&quot;</span><span class="p">)]</span>
+</span><span id="__span-0-9"><a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>    <span class="n">score</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="n">Filterable</span><span class="p">(</span><span class="n">param</span><span class="o">=</span><span class="s2">&quot;points&quot;</span><span class="p">)]</span>
+</span><span id="__span-0-10"><a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>    <span class="n">ssn</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Filterable</span><span class="p">(</span><span class="n">ops</span><span class="o">=</span><span class="n">ops</span><span class="o">.</span><span class="n">NONE</span><span class="p">)]</span>
+</span><span id="__span-0-11"><a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>    <span class="n">email</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Filterable</span><span class="p">(</span><span class="n">sortable</span><span class="o">=</span><span class="kc">False</span><span class="p">)]</span>
 </span></code></pre></div>
-<h2 id="sorting">Sorting<a class="headerlink" href="#sorting" title="Permanent link">&para;</a></h2>
-<p><code>sort</code> is a comma-separated list of field names; a leading <code>-</code> means
-descending order.</p>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>?sort=-age           # age descending
-</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>?sort=age             # age ascending
-</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>?sort=-age,name       # age descending, then name ascending as a tiebreaker
+<p>Every knob defaults to "no opinion" — a bare <code>Filterable()</code> changes nothing,
+and fields without one behave exactly as before.</p>
+<h3 id="ops-an-exact-operator-allow-list"><code>ops=[...]</code> — an exact operator allow-list<a class="headerlink" href="#ops-an-exact-operator-allow-list" title="Permanent link">&para;</a></h3>
+<p><code>name</code> above generates only <code>name</code> / <code>name__eq</code> / <code>name__contains</code> — nothing
+else. Operator names are validated against the field's type when the route
+is registered, so a typo or a type mismatch fails at startup with a message
+naming the field, the operator, and what would be valid:</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>ConfigurationError: operator &#39;contains&#39; is not valid for field &#39;age&#39; of
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>type int in Filterable(ops=...); valid operators for int: eq, ne, gt, gte,
+</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>lt, lte, in, nin, between
 </span></code></pre></div>
-<p>This compiles to:</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="n">q</span><span class="o">.</span><span class="n">sort_mongo</span><span class="p">()</span>
-</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="c1"># -&gt; [(&quot;age&quot;, -1), (&quot;name&quot;, 1)]</span>
-</span></code></pre></div>
-<p>Only fields marked <strong>sortable</strong> are accepted — by default, the same set of
-fields that are filterable. Sorting on a field outside that allow-list is
-rejected, which prevents an endpoint from accidentally allowing sorts on
-unindexed fields.</p>
-<h2 id="pagination">Pagination<a class="headerlink" href="#pagination" title="Permanent link">&para;</a></h2>
-<p>The default pagination strategy is <code>offset</code> / <code>limit</code>, which maps directly
-to Mongo's <code>skip</code>/<code>limit</code>:</p>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>?limit=20&amp;offset=40
-</span></code></pre></div>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="n">q</span><span class="o">.</span><span class="n">skip</span>   <span class="c1"># -&gt; 40</span>
-</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="n">q</span><span class="o">.</span><span class="n">limit</span>  <span class="c1"># -&gt; 20</span>
-</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>
-</span><span id="__span-4-4"><a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="k">await</span> <span class="n">db</span><span class="o">.</span><span class="n">users</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="n">q</span><span class="o">.</span><span class="n">to_mongo</span><span class="p">())</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="n">q</span><span class="o">.</span><span class="n">sort_mongo</span><span class="p">())</span><span class="o">.</span><span class="n">skip</span><span class="p">(</span><span class="n">q</span><span class="o">.</span><span class="n">skip</span><span class="p">)</span><span class="o">.</span><span class="n">limit</span><span class="p">(</span><span class="n">q</span><span class="o">.</span><span class="n">limit</span><span class="p">)</span><span class="o">.</span><span class="n">to_list</span><span class="p">(</span><span class="kc">None</span><span class="p">)</span>
-</span></code></pre></div>
-<p>Two guardrails apply out of the box:</p>
+<p>Two marker spellings cover the extremes:</p>
 <ul>
-<li><strong><code>default_limit</code></strong> — used when the client omits <code>limit</code>.</li>
-<li><strong><code>max_limit</code></strong> — the hard ceiling; an unbounded <code>limit</code> is never allowed,
-  even if a client asks for one.</li>
+<li><strong><code>ops=ops.ALL</code></strong> — everything the type supports (the <code>full</code> tier), still
+  subject to the <code>allow_regex</code> gate. <code>slug</code> above gets <code>icontains</code>,
+  <code>text_search</code>, etc., but <code>slug__regex</code> only appears with
+  <code>FilterConfig(allow_regex=True)</code>.</li>
+<li><strong><code>ops=ops.NONE</code></strong> — explicitly unfilterable: the field generates no
+  parameters at all. This is final — naming the field in
+  <code>FilterConfig.operators</code> is a <code>ConfigurationError</code>, so a route can never
+  quietly resurrect a field the model opted out.</li>
 </ul>
-<p>A <code>page</code> / <code>page_size</code> strategy (sugar over <code>offset</code>) and keyset/cursor
-pagination are on the roadmap — see
-<a href="../../design/01-developer-experience/#pagination-sorting-first-class-per-the-name">design doc 01</a>
-for the full comparison.</p>
-<h2 id="optional-a-paginated-response-envelope">Optional: a paginated response envelope<a class="headerlink" href="#optional-a-paginated-response-envelope" title="Permanent link">&para;</a></h2>
-<p>By default <code>fast-pager</code> returns just the query — you decide how to shape the
-response. For the common "list + total count" shape, an opt-in helper is
-planned for a later release:</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="nd">@app</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/users&quot;</span><span class="p">,</span> <span class="n">response_model</span><span class="o">=</span><span class="n">Page</span><span class="p">[</span><span class="n">User</span><span class="p">])</span>
-</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">list_users</span><span class="p">(</span><span class="n">q</span><span class="p">:</span> <span class="n">FilterQuery</span><span class="p">[</span><span class="n">User</span><span class="p">]</span> <span class="o">=</span> <span class="n">FilterDepends</span><span class="p">(</span><span class="n">User</span><span class="p">)):</span>
-</span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>    <span class="k">return</span> <span class="k">await</span> <span class="n">q</span><span class="o">.</span><span class="n">paginate</span><span class="p">(</span><span class="n">db</span><span class="o">.</span><span class="n">users</span><span class="p">)</span>
+<p>Listing <code>"regex"</code> explicitly (<code>Filterable(ops=["regex"])</code>) <em>does</em> bypass the
+gate — an explicit per-field list is the eyes-open opt-in.</p>
+<h3 id="source-a-different-backend-field-name"><code>source=</code> — a different backend field name<a class="headerlink" href="#source-a-different-backend-field-name" title="Permanent link">&para;</a></h3>
+<p>When the Mongo document key differs from the model field, <code>source</code> points
+the compiled query at it while the URL keeps the model name:</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>GET /users?age__gte=21
 </span></code></pre></div>
-<div class="language-json highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="p">{</span>
-</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="w">  </span><span class="nt">&quot;items&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="w"> </span><span class="s2">&quot;...&quot;</span><span class="w"> </span><span class="p">],</span>
-</span><span id="__span-6-3"><a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="w">  </span><span class="nt">&quot;total&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">137</span><span class="p">,</span>
-</span><span id="__span-6-4"><a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="w">  </span><span class="nt">&quot;limit&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">20</span><span class="p">,</span>
-</span><span id="__span-6-5"><a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a><span class="w">  </span><span class="nt">&quot;offset&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">40</span>
-</span><span id="__span-6-6"><a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a><span class="p">}</span>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="n">q</span><span class="o">.</span><span class="n">to_mongo</span><span class="p">()</span>   <span class="c1"># -&gt; {&quot;ageYears&quot;: {&quot;$gte&quot;: 21}}</span>
+</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="n">q</span><span class="o">.</span><span class="n">sort_mongo</span><span class="p">()</span> <span class="c1"># ?sort=-age -&gt; [(&quot;ageYears&quot;, -1)]</span>
 </span></code></pre></div>
-<p>The exact count is not free on a large collection, so <code>paginate(...)</code> will
-take a <code>total="exact" | "estimated" | "none"</code> knob rather than always
-running a <code>count_documents</code>. This ships in a later stage (see the
-<a href="../../design/05-roadmap-and-release/">roadmap</a>) — <code>to_mongo()</code> /
-<code>sort_mongo()</code> / <code>skip</code> / <code>limit</code> are the <code>v0.1.0</code> building blocks and remain
-available regardless.</p>
+<h3 id="param-a-different-url-parameter-name"><code>param=</code> — a different URL parameter name<a class="headerlink" href="#param-a-different-url-parameter-name" title="Permanent link">&para;</a></h3>
+<p>The mirror image: <code>param</code> renames the <em>public</em> side and leaves the backend
+alone.</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>GET /users?points__gte=1.5
+</span></code></pre></div>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="n">q</span><span class="o">.</span><span class="n">to_mongo</span><span class="p">()</span>   <span class="c1"># -&gt; {&quot;score&quot;: {&quot;$gte&quot;: 1.5}}</span>
+</span></code></pre></div>
+<p><code>FilterConfig</code> entries (<code>operators=</code>, <code>exclude=</code>, <code>sortable=</code>) always refer
+to the <strong>public</strong> name — <code>"points"</code>, not <code>"score"</code>.</p>
+<div class="admonition info">
+<p class="admonition-title">How <code>param</code>, <code>source</code>, and Pydantic aliases interact</p>
+<p>Each field has two names, resolved independently:</p>
+<ul>
+<li><strong>public</strong> (query parameter): <code>param</code> if set, else the Pydantic
+  alias, else the field name;</li>
+<li><strong>source</strong> (compiled query): <code>source</code> if set, else the Pydantic
+  alias, else the field name.</li>
+</ul>
+<p>An alias alone therefore still renames both at once (the Stage 1
+behavior); <code>param</code>/<code>source</code> pull the two apart when you need them to
+differ.</p>
+</div>
+<h3 id="sortable-per-field-sort-control"><code>sortable=</code> — per-field sort control<a class="headerlink" href="#sortable-per-field-sort-control" title="Permanent link">&para;</a></h3>
+<ul>
+<li><code>Filterable(sortable=False)</code> removes the field from the sortable set even
+  though it stays filterable. Like <code>ops.NONE</code>, it is final: listing the
+  field in <code>FilterConfig.sortable</code> raises a <code>ConfigurationError</code>.</li>
+<li><code>Filterable(sortable=True)</code> adds the field even when it isn't filterable —
+  combine it with <code>ops.NONE</code> for a <strong>sort-only</strong> field:</li>
+</ul>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="n">joined</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="n">date</span><span class="p">,</span> <span class="n">Filterable</span><span class="p">(</span><span class="n">ops</span><span class="o">=</span><span class="n">ops</span><span class="o">.</span><span class="n">NONE</span><span class="p">,</span> <span class="n">sortable</span><span class="o">=</span><span class="kc">True</span><span class="p">)]</span>
+</span></code></pre></div>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>GET /users?sort=-joined     # fine
+</span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>GET /users?joined__gte=...  # no such parameter
+</span></code></pre></div>
+<h2 id="filterconfigtype_profiles-per-type-overrides"><code>FilterConfig(type_profiles=...)</code>: per-type overrides<a class="headerlink" href="#filterconfigtype_profiles-per-type-overrides" title="Permanent link">&para;</a></h2>
+<p>"All strings in this app expose <code>icontains</code> but never <code>regex</code>" is one line
+on the route (or in a shared config object):</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="n">FilterConfig</span><span class="p">(</span><span class="n">type_profiles</span><span class="o">=</span><span class="p">{</span><span class="nb">str</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;eq&quot;</span><span class="p">,</span> <span class="s2">&quot;contains&quot;</span><span class="p">,</span> <span class="s2">&quot;icontains&quot;</span><span class="p">]})</span>
+</span></code></pre></div>
+<p>Profiles are keyed by the resolved (Optional-unwrapped) field type and are
+validated when the config is constructed — an unknown operator or one
+invalid for the keyed type raises <code>ConfigurationError</code> immediately.
+Subclasses match through the MRO with the most specific key winning, so
+<code>{enum.Enum: [...]}</code> covers every enum and <code>{bool: [...]}</code> beats
+<code>{int: [...]}</code> for <code>bool</code> fields. Nullable-only operators (<code>isnull</code>,
+<code>exists</code>) may appear in a profile; they are simply not emitted for
+non-nullable fields.</p>
+<h2 id="the-precedence-ladder">The precedence ladder<a class="headerlink" href="#the-precedence-ladder" title="Permanent link">&para;</a></h2>
+<p>Four layers, finest wins (design doc 02):</p>
+<table>
+<thead>
+<tr>
+<th>Layer</th>
+<th>Where</th>
+<th>Scope</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>4. <code>FilterConfig(operators={"field": [...]})</code></td>
+<td>route</td>
+<td>one field, one endpoint</td>
+</tr>
+<tr>
+<td>3. <code>Filterable(ops=[...])</code></td>
+<td>model</td>
+<td>one field, everywhere</td>
+</tr>
+<tr>
+<td>2. <code>FilterConfig(type_profiles={T: [...]})</code></td>
+<td>route</td>
+<td>every field of type <code>T</code></td>
+</tr>
+<tr>
+<td>1. <code>FilterConfig(default_profile=...)</code></td>
+<td>route</td>
+<td>everything</td>
+</tr>
+</tbody>
+</table>
+<p>Two absolutes sit outside the ladder: <code>Filterable(ops=ops.NONE)</code> and
+<code>Filterable(sortable=False)</code> cannot be overridden by any config — model-level
+opt-outs are a security posture, not a default.</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-9-1"><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="k">class</span><span class="w"> </span><span class="nc">User</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+</span><span id="__span-9-2"><a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>    <span class="n">name</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Filterable</span><span class="p">(</span><span class="n">ops</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;contains&quot;</span><span class="p">,</span> <span class="s2">&quot;eq&quot;</span><span class="p">])]</span>  <span class="c1"># layer 3</span>
+</span><span id="__span-9-3"><a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>    <span class="n">bio</span><span class="p">:</span> <span class="nb">str</span>                                                  <span class="c1"># layers 1/2 apply</span>
+</span><span id="__span-9-4"><a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a>
+</span><span id="__span-9-5"><a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a><span class="n">config</span> <span class="o">=</span> <span class="n">FilterConfig</span><span class="p">(</span>
+</span><span id="__span-9-6"><a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a>    <span class="n">type_profiles</span><span class="o">=</span><span class="p">{</span><span class="nb">str</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;eq&quot;</span><span class="p">,</span> <span class="s2">&quot;icontains&quot;</span><span class="p">]},</span>   <span class="c1"># layer 2</span>
+</span><span id="__span-9-7"><a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a>    <span class="n">operators</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;startswith&quot;</span><span class="p">]},</span>         <span class="c1"># layer 4</span>
+</span><span id="__span-9-8"><a id="__codelineno-9-8" name="__codelineno-9-8" href="#__codelineno-9-8"></a><span class="p">)</span>
+</span><span id="__span-9-9"><a id="__codelineno-9-9" name="__codelineno-9-9" href="#__codelineno-9-9"></a><span class="c1"># name  -&gt; startswith only            (4 beats 3)</span>
+</span><span id="__span-9-10"><a id="__codelineno-9-10" name="__codelineno-9-10" href="#__codelineno-9-10"></a><span class="c1"># bio   -&gt; eq, icontains              (2 beats 1)</span>
+</span></code></pre></div>
+<h2 id="strict-unknown-parameter-mode">Strict unknown-parameter mode<a class="headerlink" href="#strict-unknown-parameter-mode" title="Permanent link">&para;</a></h2>
+<p>By default, unrecognized query parameters are ignored — forgiving, and safe
+because unmatched parameters are never guessed at. During development,
+though, a typo like <code>?nmae__eq=alice</code> silently returning the full collection
+hides bugs. Strict mode turns it into a standard 422:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-10-1"><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="n">FilterDepends</span><span class="p">(</span><span class="n">User</span><span class="p">,</span> <span class="n">config</span><span class="o">=</span><span class="n">FilterConfig</span><span class="p">(</span><span class="n">unknown_params</span><span class="o">=</span><span class="s2">&quot;strict&quot;</span><span class="p">))</span>
+</span></code></pre></div>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-11-1"><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>GET /users?nmae__eq=alice
+</span><span id="__span-11-2"><a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>-&gt; 422 {&quot;detail&quot;: [{&quot;type&quot;: &quot;unrecognized_filter&quot;,
+</span><span id="__span-11-3"><a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a>                    &quot;loc&quot;: [&quot;query&quot;, &quot;nmae__eq&quot;],
+</span><span id="__span-11-4"><a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a>                    &quot;msg&quot;: &quot;Unrecognized filter parameter &#39;nmae__eq&#39;&quot;, ...}]}
+</span></code></pre></div>
+<p><strong>The exact rule:</strong> a parameter is rejected when it is <em>not</em> one of the
+generated (or reserved <code>limit</code>/<code>offset</code>/<code>sort</code>) names <strong>and</strong> it contains
+the configured separator (<code>__</code> by default) — i.e. it claims to be a
+<code>field__op</code> filter. This includes a real field with an unavailable operator
+(<code>name__regex</code> while regex is gated). Parameters <em>without</em> the separator are
+never rejected, because your route may legitimately declare its own
+(<code>?verbose=true</code>) and the dependency cannot see them.</p>
+<div class="admonition warning">
+<p class="admonition-title">Route parameters containing the separator</p>
+<p>The corollary: with strict mode on, don't name your route's own query
+parameters with the separator in them (<code>my__flag</code>) — strict mode would
+reject requests that use them. Rename the parameter or stay on
+<code>"ignore"</code> for that route.</p>
+</div>
 <h2 id="next">Next<a class="headerlink" href="#next" title="Permanent link">&para;</a></h2>
-<p>See the <a href="../../reference/operators/">Operator Reference</a> for every filter
-operator by type, or revisit <a href="../filtering/">Filtering</a> for the <code>field__op</code>
-convention.</p>
+<p>The <a href="../../reference/operators/">Operator Reference</a> lists every operator
+each type supports — the vocabulary <code>ops=[...]</code> and <code>type_profiles</code> draw
+from. For the design rationale behind the layering, see
+<a href="../../design/02-type-and-operator-system/#per-field-configurability-the-core-question-you-asked">design doc 02</a>.</p>
 
 
 

@@ -15,7 +15,7 @@
         <link rel="canonical" href="https://eytanohana.github.io/fast-pager/dev/reference/operators/">
       
       
-        <link rel="prev" href="../../tutorial/sorting-pagination/">
+        <link rel="prev" href="../../tutorial/controlling-fields/">
       
       
         <link rel="next" href="../../design/">
@@ -384,6 +384,35 @@
     
   
   Sorting &amp; Pagination
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorial/controlling-fields/" class="md-nav__link">
+        
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-sliders-horizontal" viewBox="0 0 24 24"><path d="M10 5H3M12 19H3M14 3v4M16 17v4M21 12h-9M21 19h-5M21 5h-7M8 10v4M8 12H3"/></svg>
+  
+  <span class="md-ellipsis">
+    
+  
+  Controlling the filter surface
 
     
   </span>
@@ -1047,6 +1076,15 @@ profile. Operators listed under <strong><code>full</code></strong> are additiona
 available only when a field (or the whole app) opts into the <code>full</code> profile;
 <code>fast-pager</code> never enables them by default because they carry extra cost or
 risk (see <a href="#safety-notes">Safety</a>).</p>
+<p>The profiles are only the <em>default</em> layer: which operators a specific field
+actually exposes can be overridden per type with
+<code>FilterConfig(type_profiles={...})</code> and per field with
+<code>Annotated[T, Filterable(ops=[...])]</code> (including <code>ops.ALL</code> / <code>ops.NONE</code>), or
+per route with <code>FilterConfig(operators={...})</code> — the full precedence ladder
+is in the
+<a href="../../tutorial/controlling-fields/">Controlling the filter surface</a> tutorial.
+Whatever the layer, an operator that is not <em>valid</em> for the field's type is
+rejected at route registration, never at request time.</p>
 <h2 id="scalar-types">Scalar types<a class="headerlink" href="#scalar-types" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
