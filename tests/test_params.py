@@ -1,10 +1,12 @@
 """Tests for parameter generation, config-time errors, and memoization."""
 
+from typing import Annotated
+
 import pytest
 from pydantic import BaseModel, ValidationError
 
-from conftest import User
-from fast_pager import ConfigurationError, FilterConfig
+from conftest import Curated, User
+from fast_pager import ConfigurationError, FilterConfig, Filterable
 from fast_pager.params import build_plan
 
 
@@ -182,3 +184,150 @@ def test_split_commas_handles_bare_strings():
 def test_sort_validator_passes_none_through():
     plan = build_plan(User, FilterConfig())
     assert plan.params_model.model_validate({"sort": None}).sort is None
+
+
+# ---------------------------------------------------------------------------
+# Stage 2: Filterable metadata, type_profiles, and the layering rules.
+# ---------------------------------------------------------------------------
+
+
+def names_for(plan, field):
+    prefix = f"{field}__"
+    return {n for n in url_names(plan) if n == field or n.startswith(prefix)}
+
+
+def test_filterable_ops_list_is_exact():
+    plan = build_plan(Curated, FilterConfig())
+    assert names_for(plan, "name") == {"name", "name__eq", "name__contains"}
+
+
+def test_filterable_ops_all_includes_full_tier_but_regex_stays_gated():
+    names = url_names(build_plan(Curated, FilterConfig()))
+    assert {"slug__icontains", "slug__text_search", "slug__iendswith"} <= names
+    assert "slug__regex" not in names
+    gated_open = url_names(build_plan(Curated, FilterConfig(allow_regex=True)))
+    assert "slug__regex" in gated_open
+
+
+def test_explicit_regex_in_filterable_ops_bypasses_the_gate():
+    class M(BaseModel):
+        name: Annotated[str, Filterable(ops=["regex"])]
+
+    assert "name__regex" in url_names(build_plan(M, FilterConfig()))
+
+
+def test_filterable_invalid_operator_error_names_field_op_and_valid_set():
+    class M(BaseModel):
+        age: Annotated[int, Filterable(ops=["contains"])]
+
+    with pytest.raises(
+        ConfigurationError,
+        match=r"operator 'contains' is not valid for field 'age' of type int.*"
+        r"valid operators for int: eq, ne, gt, gte",
+    ):
+        build_plan(M, FilterConfig())
+
+
+def test_filterable_unknown_operator_error_names_known_operators():
+    class M(BaseModel):
+        age: Annotated[int, Filterable(ops=["frobnicate"])]
+
+    with pytest.raises(ConfigurationError, match=r"'frobnicate'.*'age'.*known operators"):
+        build_plan(M, FilterConfig())
+
+
+def test_ops_none_removes_field_from_filter_surface_and_sortable():
+    plan = build_plan(Curated, FilterConfig())
+    assert names_for(plan, "ssn") == set()
+    assert "ssn" not in plan.sortable
+
+
+def test_ops_none_field_cannot_be_configured_in_operators():
+    with pytest.raises(ConfigurationError, match=r"'ssn'.*ops\.NONE"):
+        build_plan(Curated, FilterConfig(operators={"ssn": ["eq"]}))
+
+
+def test_sortable_true_makes_ops_none_field_sort_only():
+    plan = build_plan(Curated, FilterConfig())
+    assert names_for(plan, "joined") == set()
+    assert "joined" in plan.sortable
+    assert plan.sources["joined"] == "joined"
+
+
+def test_sortable_false_removes_field_from_default_sortable_set():
+    plan = build_plan(Curated, FilterConfig())
+    assert "email" in {p.spec.public_name for p in plan.params}  # still filterable
+    assert "email" not in plan.sortable
+
+
+def test_sortable_false_conflicts_with_config_sortable():
+    with pytest.raises(ConfigurationError, match=r"'email'.*sortable=False"):
+        build_plan(Curated, FilterConfig(sortable=["email"]))
+
+
+def test_config_sortable_may_name_a_sort_only_field():
+    plan = build_plan(Curated, FilterConfig(sortable=["joined"]))
+    assert plan.sortable == frozenset({"joined"})
+
+
+def test_source_mapped_for_compiled_queries():
+    plan = build_plan(Curated, FilterConfig())
+    assert plan.sources["age"] == "ageYears"
+
+
+def test_param_renames_the_public_surface():
+    plan = build_plan(Curated, FilterConfig())
+    names = url_names(plan)
+    assert "points__gte" in names and "points" in names
+    assert names_for(plan, "score") == set()
+    assert "points" in plan.sortable and "score" not in plan.sortable
+    assert plan.sources["points"] == "score"
+
+
+def test_config_entries_are_keyed_by_the_public_param_name():
+    plan = build_plan(Curated, FilterConfig(operators={"points": ["gte"]}))
+    assert names_for(plan, "points") == {"points__gte"}
+    with pytest.raises(ConfigurationError, match="'score'"):
+        build_plan(Curated, FilterConfig(operators={"score": ["gte"]}))
+
+
+def test_type_profiles_override_the_default_profile():
+    plan = build_plan(User, FilterConfig(type_profiles={str: ["eq", "icontains"]}))
+    assert names_for(plan, "name") == {"name", "name__eq", "name__icontains"}
+    assert "age__gte" in url_names(plan)  # other types untouched
+
+
+def test_type_profiles_nullable_only_ops_dropped_for_non_nullable_fields():
+    plan = build_plan(User, FilterConfig(type_profiles={str: ["eq", "isnull"]}))
+    names = url_names(plan)
+    assert "name__isnull" not in names
+    assert "nickname__isnull" in names
+
+
+def test_type_profiles_match_subclasses_via_mro():
+    import enum
+
+    plan = build_plan(User, FilterConfig(type_profiles={enum.Enum: ["eq"]}))
+    assert names_for(plan, "color") == {"color", "color__eq"}
+
+
+def test_type_profiles_exact_key_beats_base_class_key():
+    plan = build_plan(User, FilterConfig(type_profiles={int: ["eq"], bool: ["eq", "ne"]}))
+    assert names_for(plan, "active") == {"active", "active__eq", "active__ne"}
+    assert names_for(plan, "age") == {"age", "age__eq"}
+
+
+def test_filterable_ops_beat_type_profiles():
+    plan = build_plan(Curated, FilterConfig(type_profiles={str: ["eq", "icontains"]}))
+    assert names_for(plan, "name") == {"name", "name__eq", "name__contains"}
+
+
+def test_config_operators_beat_filterable_ops():
+    plan = build_plan(Curated, FilterConfig(operators={"name": ["startswith"]}))
+    assert names_for(plan, "name") == {"name__startswith"}
+
+
+def test_plan_records_known_params_for_strict_mode():
+    plan = build_plan(User, FilterConfig())
+    assert {"limit", "offset", "sort", "name", "age__gte"} <= plan.known_params
+    assert "name__bogus" not in plan.known_params

@@ -29,8 +29,16 @@ from pydantic import (
 
 from .config import FilterConfig
 from .errors import ConfigurationError
+from .filterable import OpsMarker
 from .introspection import FieldSpec, introspect_model, public_field_names
-from .operators import DEFAULT_REGISTRY, Arity, Operator, all_operators_for, operators_for
+from .operators import (
+    DEFAULT_REGISTRY,
+    Arity,
+    Operator,
+    all_operators_for,
+    operators_for,
+    type_name,
+)
 
 __all__ = ["QueryPlan", "ResolvedParam", "build_plan"]
 
@@ -83,6 +91,7 @@ class QueryPlan:
     params_model: type[BaseModel]
     sortable: frozenset[str]
     sources: dict[str, str]
+    known_params: frozenset[str]
 
 
 _PLAN_CACHE: dict[tuple[type[BaseModel], FilterConfig], QueryPlan] = {}
@@ -108,31 +117,85 @@ def _python_name(url_name: str) -> str:
     return "f_" + re.sub(r"\W", "_", url_name)
 
 
+def _is_unfilterable(spec: FieldSpec) -> bool:
+    """Whether the field is explicitly opted out via ``Filterable(ops=ops.NONE)``."""
+    return spec.filterable is not None and spec.filterable.ops is OpsMarker.NONE
+
+
+def _validated_ops(names: tuple[str, ...], spec: FieldSpec, where: str) -> tuple[str, ...]:
+    """Validate an explicit operator list for one field, with rich errors."""
+    valid = all_operators_for(spec.py_type, spec.nullable)
+    tname = type_name(spec.py_type)
+    for op_name in names:
+        if op_name not in DEFAULT_REGISTRY:
+            raise ConfigurationError(
+                f"unknown operator {op_name!r} for field {spec.public_name!r} in {where}; "
+                f"known operators: {', '.join(sorted(DEFAULT_REGISTRY))}"
+            )
+        if op_name not in valid:
+            raise ConfigurationError(
+                f"operator {op_name!r} is not valid for field {spec.public_name!r} of "
+                f"type {tname} in {where}; valid operators for {tname}: {', '.join(valid)}"
+            )
+    return names
+
+
+def _match_type_profile(py_type: Any, config: FilterConfig) -> tuple[str, ...] | None:
+    """Find the ``type_profiles`` entry for a resolved field type, if any.
+
+    An exact key match wins; otherwise base classes match in MRO order (most
+    specific first), so ``{enum.Enum: [...]}`` covers every enum. ``Literal``
+    fields only ever match an exact ``Literal[...]`` key.
+    """
+    profiles = config.type_profiles
+    if not profiles:
+        return None
+    if py_type in profiles:
+        return tuple(profiles[py_type])
+    if isinstance(py_type, type):
+        for base in py_type.__mro__:
+            if base in profiles:
+                return tuple(profiles[base])
+    return None
+
+
 def _ops_for_spec(spec: FieldSpec, config: FilterConfig) -> tuple[Operator, ...]:
-    """Resolve the operator set for one field, honoring per-field overrides.
+    """Resolve one field's operator set through the precedence layers.
+
+    Finest wins (design doc 02 layering): route-level ``FilterConfig.operators``
+    > field-level ``Filterable(ops=...)`` > ``FilterConfig.type_profiles`` >
+    the global ``default_profile``. Explicit per-field/per-type lists bypass
+    the ``allow_regex`` gate (listing ``regex`` is the eyes-open opt-in);
+    ``ops.ALL`` and the default profile stay gated. Fields marked
+    ``ops.NONE`` never reach this function — they are dropped from the
+    filterable set in :func:`build_plan`.
 
     Raises :class:`ConfigurationError` when an explicitly configured operator
     is unknown or not valid for the field's type.
     """
-    overrides = dict(config.operators or {})
-    valid = all_operators_for(spec.py_type, spec.nullable)
+    overrides = config.operators or {}
+    field_ops = spec.filterable.ops if spec.filterable is not None else None
     if spec.public_name in overrides:
-        names = tuple(overrides[spec.public_name])
-        for op_name in names:
-            if op_name not in DEFAULT_REGISTRY:
-                raise ConfigurationError(
-                    f"unknown operator {op_name!r} configured for field {spec.public_name!r}"
-                )
-            if op_name not in valid:
-                raise ConfigurationError(
-                    f"operator {op_name!r} is not valid for field {spec.public_name!r} "
-                    f"(type {spec.py_type!r}); valid operators: {', '.join(valid)}"
-                )
-    else:
-        names = operators_for(spec.py_type, spec.nullable, config.default_profile)
+        names = _validated_ops(tuple(overrides[spec.public_name]), spec, "FilterConfig.operators")
+    elif isinstance(field_ops, OpsMarker):
+        # ops.ALL — everything the type supports, still regex-gated.
+        names = all_operators_for(spec.py_type, spec.nullable)
         if not config.allow_regex:
-            # `regex` is additionally config-gated even under the full profile.
             names = tuple(n for n in names if n != "regex")
+    elif field_ops is not None:
+        names = _validated_ops(tuple(field_ops), spec, "Filterable(ops=...)")
+    else:
+        profile_names = _match_type_profile(spec.py_type, config)
+        if profile_names is not None:
+            # Validated for the type at config construction; drop the
+            # nullable-only operators for non-nullable fields.
+            valid = all_operators_for(spec.py_type, spec.nullable)
+            names = tuple(n for n in profile_names if n in valid)
+        else:
+            names = operators_for(spec.py_type, spec.nullable, config.default_profile)
+            if not config.allow_regex:
+                # `regex` is additionally config-gated even under the full profile.
+                names = tuple(n for n in names if n != "regex")
     return tuple(DEFAULT_REGISTRY[n] for n in names)
 
 
@@ -219,34 +282,70 @@ def _resolve_params(
 def _validate_config_fields(
     model: type[BaseModel], specs: tuple[FieldSpec, ...], config: FilterConfig
 ) -> None:
-    """Reject config that names unknown or non-filterable fields."""
-    model_publics = public_field_names(model)
-    filterable = {s.public_name for s in specs}
+    """Reject config that names unknown, non-filterable, or opted-out fields.
+
+    Config entries are keyed by *public* parameter names — a field renamed
+    with ``Filterable(param=...)`` is referenced by its param name, an
+    aliased field by its alias.
+    """
+    known = public_field_names(model) | {s.public_name for s in specs}
+    filterable = {s.public_name for s in specs if not _is_unfilterable(s)}
+    unfilterable = {s.public_name for s in specs if _is_unfilterable(s)}
     for name in config.exclude:
-        if name not in model_publics:
+        if name not in known:
             raise ConfigurationError(
-                f"unknown field {name!r} in FilterConfig.exclude for model {model.__name__}"
+                f"unknown field {name!r} in FilterConfig.exclude for model "
+                f"{model.__name__}; known fields: {', '.join(sorted(known))}"
             )
     for name in config.operators or {}:
+        if name in unfilterable:
+            raise ConfigurationError(
+                f"field {name!r} of model {model.__name__} is marked "
+                f"Filterable(ops=ops.NONE) and cannot be configured in "
+                f"FilterConfig.operators; remove the marker to make it filterable"
+            )
         if name not in filterable:
             raise ConfigurationError(
                 f"unknown or non-filterable field {name!r} in FilterConfig.operators "
-                f"for model {model.__name__}"
+                f"for model {model.__name__}; filterable fields: "
+                f"{', '.join(sorted(filterable))}"
             )
 
 
 def _resolve_sortable(
-    model: type[BaseModel], specs: tuple[FieldSpec, ...], config: FilterConfig
+    model: type[BaseModel],
+    specs: tuple[FieldSpec, ...],
+    filterable_specs: tuple[FieldSpec, ...],
+    config: FilterConfig,
 ) -> frozenset[str]:
-    """The sortable allow-list; defaults to the filterable field set."""
-    filterable = {s.public_name for s in specs}
+    """The sortable field set: config allow-list × per-field overrides.
+
+    With no ``FilterConfig.sortable`` allow-list, the default is "sortable
+    iff filterable", plus fields forced in with ``Filterable(sortable=True)``
+    (which can make an ``ops.NONE`` field sort-only), minus fields opted out
+    with ``Filterable(sortable=False)``. When the allow-list *is* given it
+    wins — except ``sortable=False``, which is final and turns a conflicting
+    allow-list entry into a :class:`ConfigurationError`.
+    """
+    flags = {s.public_name: s.filterable.sortable for s in specs if s.filterable is not None}
+    non_sortable = {name for name, flag in flags.items() if flag is False}
     if config.sortable is None:
-        return frozenset(filterable)
+        forced = {name for name, flag in flags.items() if flag is True}
+        base = {s.public_name for s in filterable_specs}
+        return frozenset((base | forced) - non_sortable)
+    known = {s.public_name for s in specs}
     for name in config.sortable:
-        if name not in filterable:
+        if name in non_sortable:
+            raise ConfigurationError(
+                f"field {name!r} in FilterConfig.sortable is marked "
+                f"Filterable(sortable=False) on model {model.__name__} and cannot "
+                f"be made sortable"
+            )
+        if name not in known:
             raise ConfigurationError(
                 f"field {name!r} in FilterConfig.sortable is not a filterable field "
-                f"of model {model.__name__}"
+                f"of model {model.__name__}; sortable candidates: "
+                f"{', '.join(sorted(known - non_sortable))}"
             )
     return frozenset(config.sortable)
 
@@ -313,9 +412,10 @@ def build_plan(model: type[BaseModel], config: FilterConfig) -> QueryPlan:
         return cached
     all_specs = introspect_model(model)
     _validate_config_fields(model, all_specs, config)
-    specs = tuple(s for s in all_specs if s.public_name not in set(config.exclude))
-    params = _resolve_params(specs, config)
-    sortable = _resolve_sortable(model, specs, config)
+    visible = tuple(s for s in all_specs if s.public_name not in set(config.exclude))
+    filterable_specs = tuple(s for s in visible if not _is_unfilterable(s))
+    params = _resolve_params(filterable_specs, config)
+    sortable = _resolve_sortable(model, visible, filterable_specs, config)
     params_model = _build_params_model(model, params, sortable, config)
     plan = QueryPlan(
         model=model,
@@ -323,7 +423,10 @@ def build_plan(model: type[BaseModel], config: FilterConfig) -> QueryPlan:
         params=params,
         params_model=params_model,
         sortable=sortable,
-        sources={s.public_name: s.source for s in specs},
+        # Keyed by public name for every visible field (including sort-only
+        # ops.NONE fields) so sort tokens always map to their source name.
+        sources={s.public_name: s.source for s in visible},
+        known_params=frozenset(p.url_name for p in params) | frozenset(RESERVED_PARAMS),
     )
     _PLAN_CACHE[key] = plan
     return plan

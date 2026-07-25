@@ -3,11 +3,13 @@
 import enum
 from datetime import date, datetime, time
 from decimal import Decimal
-from typing import Literal, Optional
+from typing import Annotated, Literal, Optional
 from uuid import UUID
 
 import pytest
 from pydantic import BaseModel, Field
+
+from fast_pager import Filterable, ops
 
 
 class Color(enum.Enum):
@@ -35,6 +37,18 @@ class User(BaseModel):
 class Aliased(BaseModel):
     user_name: str = Field(alias="userName")
     age: int
+
+
+class Curated(BaseModel):
+    """The Stage 2 workhorse: one field per `Filterable` knob."""
+
+    name: Annotated[str, Filterable(ops=["contains", "eq"])]
+    slug: Annotated[str, Filterable(ops=ops.ALL)]
+    age: Annotated[int, Filterable(source="ageYears")]
+    score: Annotated[float, Filterable(param="points")]
+    ssn: Annotated[str, Filterable(ops=ops.NONE)]
+    joined: Annotated[date, Filterable(ops=ops.NONE, sortable=True)]
+    email: Annotated[str, Filterable(sortable=False)]
 
 
 @pytest.fixture(autouse=True)
