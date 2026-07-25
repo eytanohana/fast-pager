@@ -41,20 +41,21 @@ Stage 1 deliverable.
 | Version | Stage | Headline |
 |---|---|---|
 | `0.0.1` | 0 | ✅ Name reserved on PyPI; CI + release automation |
-| `0.0.2` | 1 (checkpoint) | Core engine: AST, operator registry, introspection, Mongo compiler — usable programmatically |
-| `0.0.3` | 1 (checkpoint) | FastAPI integration: `FilterDepends`/`FilterQuery`, pagination + sorting — the README demo works |
-| `0.1.0` | 1 | Stage 1 complete: exit criteria green, **docs site live**, polish |
-| `0.2.0` | 2 | Per-field control: `Annotated[T, Filterable(...)]`, strict mode |
-| `0.3.0` | 3 | `FilterSet` + compound types (arrays, nested models, `elem`) |
-| `0.4.0` | 4 | `Page[T]` envelope, `paginate()` helpers, count modes |
-| `0.5.0` | 5 | SQLAlchemy backend + conformance test suite |
-| `0.6.0` | 6 | Cursor/keyset pagination + adapter authoring guide |
+| `0.0.2` | 1 | ✅ Stage 1 in full (both planned checkpoints landed together): core engine + FastAPI integration + versioned docs site — the README demo works |
+| `0.0.3` | 2 | Per-field control: `Annotated[T, Filterable(...)]`, per-type profiles, strict mode |
+| `0.1.0` | 1–2 | Stages 1–2 exit criteria green, docs describe the shipped API, polish |
+| `0.2.0` | 3 | `FilterSet` + compound types (arrays, nested models, `elem`) |
+| `0.3.0` | 4 | `Page[T]` envelope, `paginate()` helpers, count modes |
+| `0.4.0` | 5 | SQLAlchemy backend + conformance test suite |
+| `0.5.0` | 6 | Cursor/keyset pagination + adapter authoring guide |
 | `1.0.0` | 7 | API freeze, security/perf hardening, complete docs |
 
 Patch releases (`0.x.y`) ship bug fixes between stages as needed. Larger
-stages may add intermittent checkpoint releases (as Stage 1 does with
-`0.0.2`/`0.0.3`) when a coherent, working slice lands early — decided
-per-stage with maintainer approval like any release.
+stages may add intermittent checkpoint releases when a coherent, working
+slice lands early — decided per-stage with maintainer approval like any
+release. (Stage 1 planned two checkpoints but shipped as one, `0.0.2`;
+Stage 2 ships as the `0.0.3` checkpoint and is finalized in `0.1.0` — the
+stage→version rows above reflect the renumbering.)
 
 **Commit discipline:** work lands as small, human-reviewable commits — one
 logical unit per commit (a module with its tests, a workflow, a docs
@@ -165,7 +166,7 @@ bumped by `release.sh minor`.
 
 ---
 
-## Stage 2 — Per-field control (Option A) → `v0.2.0`
+## Stage 2 — Per-field control (Option A) → `v0.0.3`, finalized in `v0.1.0`
 
 1. `Filterable(ops=..., source=..., param=...)` metadata read from
    `Annotated[T, Filterable(...)]` (doc 01 Option A; doc 02 layering rules:
@@ -175,9 +176,9 @@ bumped by `release.sh minor`.
 3. `strict` unknown-param mode (422 on unrecognized `field__op`).
 4. Rich `ConfigurationError` messages (field, operator, valid alternatives).
 5. Docs: "Controlling the filter surface" tutorial page; config reference.
-6. Exit: layering precedence fully tested; docs updated → release `v0.2.0`.
+6. Exit: layering precedence fully tested; docs updated → release `v0.0.3`.
 
-## Stage 3 — FilterSet + compound types → `v0.3.0`
+## Stage 3 — FilterSet + compound types → `v0.2.0`
 
 1. `FilterSet` class (doc 01 Option B): `Meta.model`, allow-list `fields`
    mapping, custom declared filters; multiple filtersets per model.
@@ -191,15 +192,15 @@ bumped by `release.sh minor`.
 4. Exit: all doc 02 type tables implemented & tested; the non-trivial example
    app (users + addresses + tags + orders) works → release `v0.3.0`.
 
-## Stage 4 — Response envelope & ergonomics → `v0.4.0`
+## Stage 4 — Response envelope & ergonomics → `v0.3.0`
 
 1. `Page[T]` generic model; `q.paginate(collection, total="exact|estimated|none")`
    (doc 01): optional `[mongo]` extra for motor/pymongo conveniences.
 2. `page`/`page_size` strategy (sugar over offset).
 3. Docs: pagination guide incl. count-cost tradeoffs.
-4. Exit: envelope + OpenAPI schema correct; release `v0.4.0`.
+4. Exit: envelope + OpenAPI schema correct; release `v0.3.0`.
 
-## Stage 5 — SQLAlchemy backend + conformance suite → `v0.5.0`
+## Stage 5 — SQLAlchemy backend + conformance suite → `v0.4.0`
 
 1. **Conformance test suite first** (doc 04): a fixed battery of
    `FilterAST → expected shape` cases every adapter must pass; run it against
@@ -209,9 +210,9 @@ bumped by `release.sh minor`.
    flat tables + JSON/JSONB first, relationship JOINs deferred.
 3. Docs: backend selection guide; capability matrix page.
 4. Exit: the same example endpoints run on Mongo and SQLAlchemy with only a
-   backend swap; both pass conformance → release `v0.5.0`.
+   backend swap; both pass conformance → release `v0.4.0`.
 
-## Stage 6 — Cursor pagination + adapter guide → `v0.6.0`
+## Stage 6 — Cursor pagination + adapter guide → `v0.5.0`
 
 1. Keyset pagination with opaque cursor tokens; automatic unique tiebreaker
    (`_id` / PK) appended to the sort key (doc 01).
@@ -219,7 +220,7 @@ bumped by `release.sh minor`.
    third-party backends.
 3. Docs: cursor pagination guide; adapter guide.
 4. Exit: cursor strategy on at least one backend, conformance-tested →
-   release `v0.6.0`.
+   release `v0.5.0`.
 
 ## Stage 7 — Hardening → `v1.0.0`
 
