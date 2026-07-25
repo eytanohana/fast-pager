@@ -10,6 +10,19 @@ below. See the [Roadmap](design/05-roadmap-and-release.md) for what's coming
 next, and the [development plan](https://github.com/eytanohana/fast-pager/blob/main/DEVELOPMENT_PLAN.md)
 for the execution detail behind each stage.
 
+## `0.0.2` — Stage 1 checkpoint: the core works
+
+The README example is real: zero-config `FilterQuery[Model]` /
+`FilterDepends(Model)` for **scalar fields** (`str`, numerics, `bool`,
+datetimes, `UUID`, `Enum`/`Literal`, `Optional`), typed filter/sort/pagination
+query parameters in OpenAPI, standard 422s on bad input, and a MongoDB
+compiler producing plain query dicts (no driver dependency). Safety defaults
+on: `safe` operator profile, regex gated off, list/filter/limit caps,
+sortable allow-list. 100% test coverage, `mypy --strict` clean.
+
+Still to come for `v0.1.0`: per-field `Filterable(...)` control and final
+polish — see the roadmap below.
+
 ## `0.0.1` — placeholder release
 
 The current state of the project on PyPI: the package name is reserved and
