@@ -122,6 +122,14 @@ toggle.name = "Switch to light mode"
 icon = "fontawesome/brands/github"
 link = "https://github.com/eytanohana/fast-pager"
 
+# Versioned docs via mike (a Zensical-compatible fork — see
+# docs/contributing/docs-site.md for the full versioning setup).
+# https://zensical.org/docs/setup/versioning/
+[project.extra.version]
+provider = "mike"
+default = "latest"
+alias = true
+
 # ----------------------------------------------------------------------------
 # Markdown extensions — same set Zensical ships by default (see
 # `zensical new`'s template), kept explicit here so it's obvious what's on.
