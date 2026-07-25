@@ -24,6 +24,7 @@ from .backends.mongo import MongoCompiler
 from .config import FilterConfig
 from .dependency import FilterDepends
 from .errors import CompilationError, ConfigurationError, FastPagerError
+from .filterable import Filterable, OpsMarker, ops
 from .introspection import FieldSpec, introspect_model
 from .operators import DEFAULT_REGISTRY, Arity, Container, Operator, Tier, ValueTypeRule
 from .query import FilterQuery
@@ -41,9 +42,11 @@ __all__ = [
     "FilterConfig",
     "FilterDepends",
     "FilterQuery",
+    "Filterable",
     "Group",
     "MongoCompiler",
     "Operator",
+    "OpsMarker",
     "Page",
     "QueryCompiler",
     "Sort",
@@ -52,6 +55,7 @@ __all__ = [
     "ValueTypeRule",
     "__version__",
     "introspect_model",
+    "ops",
 ]
 
 __version__ = version("fast-pager")
