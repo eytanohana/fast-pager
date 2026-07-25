@@ -26,6 +26,7 @@ __all__ = [
     "all_operators_for",
     "operators_for",
     "type_kind",
+    "type_name",
 ]
 
 
@@ -170,6 +171,16 @@ def type_kind(py_type: Any) -> str | None:
     if issubclass(py_type, UUID):
         return "uuid"
     return None
+
+
+def type_name(py_type: Any) -> str:
+    """Human-readable name of a resolved field type, for error messages.
+
+    ``int`` renders as ``int`` (not ``<class 'int'>``); ``Literal`` and other
+    typing forms fall back to their ``str()`` representation.
+    """
+    name = getattr(py_type, "__name__", None)
+    return name if isinstance(name, str) else str(py_type)
 
 
 def operators_for(
