@@ -39,3 +39,38 @@ def test_config_is_hashable_and_comparable_with_mappings():
     assert hash(a) == hash(b)
     assert a != FilterConfig()
     assert a.__eq__(object()) is NotImplemented
+
+
+def test_type_profiles_accept_valid_operators():
+    cfg = FilterConfig(type_profiles={str: ["eq", "icontains"], int: ["gte", "lte"]})
+    assert cfg.type_profiles is not None
+
+
+def test_type_profiles_unknown_operator_raises_with_known_list():
+    with pytest.raises(ConfigurationError, match=r"'frobnicate'.*str.*known operators"):
+        FilterConfig(type_profiles={str: ["frobnicate"]})
+
+
+def test_type_profiles_operator_invalid_for_type_raises_with_valid_list():
+    with pytest.raises(ConfigurationError, match=r"'gte'.*str.*valid operators for str"):
+        FilterConfig(type_profiles={str: ["gte"]})
+
+
+def test_type_profiles_unfilterable_type_raises():
+    with pytest.raises(ConfigurationError, match="bytes"):
+        FilterConfig(type_profiles={bytes: ["eq"]})
+
+
+def test_unknown_params_mode_validated():
+    assert FilterConfig(unknown_params="strict").unknown_params == "strict"
+    with pytest.raises(ConfigurationError, match="unknown_params"):
+        FilterConfig(unknown_params="loose")
+
+
+def test_config_hash_covers_type_profiles_and_unknown_params():
+    a = FilterConfig(type_profiles={str: ["eq"]})
+    b = FilterConfig(type_profiles={str: ("eq",)})
+    assert a == b
+    assert hash(a) == hash(b)
+    assert a != FilterConfig()
+    assert FilterConfig(unknown_params="strict") != FilterConfig()

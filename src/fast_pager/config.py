@@ -4,9 +4,10 @@ from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
-from typing import Literal
+from typing import Any, Literal
 
 from .errors import ConfigurationError
+from .operators import DEFAULT_REGISTRY, all_operators_for, type_name
 
 __all__ = ["FilterConfig"]
 
@@ -25,13 +26,30 @@ class FilterConfig:
             profile, ``regex`` params are only generated when this is true
             (or when ``regex`` is listed explicitly in ``operators``).
         operators: Optional per-field operator allow-list, keyed by the
-            field's public (query-parameter) name. Overrides the profile for
-            that field. Unknown fields or operators invalid for the field's
-            type raise :class:`~fast_pager.errors.ConfigurationError` at
-            registration.
+            field's public (query-parameter) name. The finest layer: it beats
+            field-level ``Filterable(ops=...)``, per-type ``type_profiles``,
+            and the global profile — except ``Filterable(ops=ops.NONE)``,
+            which is final. Unknown fields or operators invalid for the
+            field's type raise :class:`~fast_pager.errors.ConfigurationError`
+            at registration.
+        type_profiles: Optional per-type operator allow-lists (e.g.
+            ``{str: ["eq", "contains", "icontains"]}``), keyed by the
+            resolved (Optional-unwrapped) field type; subclasses match via
+            the MRO, most specific key first. Sits between the global
+            ``default_profile`` and field-level ``Filterable(ops=...)``.
+            Operators unknown or invalid for the keyed type raise
+            :class:`~fast_pager.errors.ConfigurationError`; nullable-only
+            operators (``isnull``/``exists``) in a profile are simply not
+            emitted for non-nullable fields.
+        unknown_params: What to do with a request parameter that looks like a
+            filter (contains ``separator``) but matches no generated
+            parameter: ``"ignore"`` (default) drops it silently; ``"strict"``
+            returns a standard 422 naming the parameter. Parameters *without*
+            the separator are never rejected — they may belong to the route.
         exclude: Public field names to leave out of the filter surface.
         sortable: Allow-list of sortable public field names. ``None`` means
-            "same as the filterable fields".
+            "same as the filterable fields", adjusted by any per-field
+            ``Filterable(sortable=...)`` overrides.
         separator: Token between field name and operator in parameter names.
         default_limit: ``limit`` value when the client does not send one.
         max_limit: Upper bound on ``limit``; larger values are a 422.
@@ -42,6 +60,8 @@ class FilterConfig:
     default_profile: Literal["safe", "full"] = "safe"
     allow_regex: bool = False
     operators: Mapping[str, Sequence[str]] | None = None
+    type_profiles: Mapping[type[Any], Sequence[str]] | None = None
+    unknown_params: Literal["ignore", "strict"] = "ignore"
     exclude: Sequence[str] = ()
     sortable: Sequence[str] | None = None
     separator: str = "__"
@@ -65,13 +85,51 @@ class FilterConfig:
             raise ConfigurationError(
                 f"default_limit ({self.default_limit}) must not exceed max_limit ({self.max_limit})"
             )
+        if self.unknown_params not in ("ignore", "strict"):
+            raise ConfigurationError(
+                f"unknown_params must be 'ignore' or 'strict', got {self.unknown_params!r}"
+            )
+        self._validate_type_profiles()
+
+    def _validate_type_profiles(self) -> None:
+        """Reject type profiles keyed by unfilterable types or naming bad operators."""
+        for py_type, names in (self.type_profiles or {}).items():
+            tname = type_name(py_type)
+            # nullable=True is the most permissive check: isnull/exists are
+            # allowed here and simply not emitted for non-nullable fields.
+            valid = all_operators_for(py_type, nullable=True)
+            if not valid:
+                raise ConfigurationError(
+                    f"type {tname} in FilterConfig.type_profiles is not a filterable scalar type"
+                )
+            for op_name in names:
+                if op_name not in DEFAULT_REGISTRY:
+                    raise ConfigurationError(
+                        f"unknown operator {op_name!r} for type {tname} in "
+                        f"FilterConfig.type_profiles; known operators: "
+                        f"{', '.join(sorted(DEFAULT_REGISTRY))}"
+                    )
+                if op_name not in valid:
+                    raise ConfigurationError(
+                        f"operator {op_name!r} is not valid for type {tname} in "
+                        f"FilterConfig.type_profiles; valid operators for {tname}: "
+                        f"{', '.join(valid)}"
+                    )
 
     def _canonical(self) -> tuple[object, ...]:
         ops = tuple(sorted((k, tuple(v)) for k, v in (self.operators or {}).items()))
+        profiles = tuple(
+            sorted(
+                ((k, tuple(v)) for k, v in (self.type_profiles or {}).items()),
+                key=lambda item: (item[0].__module__, item[0].__qualname__),
+            )
+        )
         return (
             self.default_profile,
             self.allow_regex,
             ops,
+            profiles,
+            self.unknown_params,
             tuple(self.exclude),
             None if self.sortable is None else tuple(self.sortable),
             self.separator,
