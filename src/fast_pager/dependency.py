@@ -4,15 +4,48 @@ from __future__ import annotations
 
 from typing import Annotated, Any, get_args, get_origin
 
-from fastapi import Depends, Query
+from fastapi import Depends, Query, Request
+from fastapi.exceptions import RequestValidationError
 from pydantic import BaseModel
 
 from .config import FilterConfig
 from .errors import ConfigurationError
-from .params import build_plan
+from .params import QueryPlan, build_plan
 from .query import FilterQuery
 
 __all__ = ["FilterDepends"]
+
+
+def _check_unknown_params(plan: QueryPlan, request: Request) -> None:
+    """Reject unrecognized filter parameters (``unknown_params="strict"``).
+
+    The exact rule: a query-parameter name triggers a standard 422 when it
+
+    1. is **not** one of the generated (or reserved) parameter names, **and**
+    2. **contains the configured separator** — i.e. it claims to be a
+       ``field__op`` filter (design doc 01, *Errors and ergonomics*).
+
+    Names *without* the separator are never rejected, because the route (or
+    another dependency) may legitimately declare them — this dependency
+    cannot see its siblings' parameters. Corollary: when strict mode is on,
+    a route's own query parameters must not contain the separator, or
+    requests using them will be rejected here.
+    """
+    separator = plan.config.separator
+    errors = [
+        {
+            "type": "unrecognized_filter",
+            "loc": ("query", name),
+            "msg": f"Unrecognized filter parameter {name!r}",
+            "input": request.query_params[name],
+        }
+        # dict.fromkeys: unique names, in request order.
+        for name in dict.fromkeys(request.query_params)
+        if separator in name and name not in plan.known_params
+    ]
+    if errors:
+        # FastAPI's default handler turns this into the standard 422 shape.
+        raise RequestValidationError(errors)
 
 
 def _resolve_model(target: Any) -> type[BaseModel]:
@@ -46,7 +79,9 @@ def FilterDepends(target: Any, *, config: FilterConfig | None = None) -> Any:
     model = _resolve_model(target)
     plan = build_plan(model, config if config is not None else FilterConfig())
 
-    def dependency(raw: BaseModel) -> FilterQuery[Any]:
+    def dependency(request: Request, raw: BaseModel) -> FilterQuery[Any]:
+        if plan.config.unknown_params == "strict":
+            _check_unknown_params(plan, request)
         return FilterQuery(plan, raw)
 
     # `from __future__ import annotations` stringifies def-time annotations,

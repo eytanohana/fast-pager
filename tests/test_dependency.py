@@ -5,7 +5,7 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from pydantic import BaseModel
 
-from conftest import Aliased, User
+from conftest import Aliased, Curated, User
 from fast_pager import ConfigurationError, FilterConfig, FilterDepends, FilterQuery
 
 
@@ -160,3 +160,87 @@ class Duplicated(BaseModel):
 def test_registration_collision_error_names_both_sources():
     with pytest.raises(ConfigurationError, match="collision"):
         make_app(target=Duplicated)
+
+
+# ---------------------------------------------------------------------------
+# Stage 2: strict unknown-param mode and source/param mapping end to end.
+# ---------------------------------------------------------------------------
+
+STRICT = FilterConfig(unknown_params="strict")
+
+
+def test_strict_mode_rejects_unknown_filter_params_naming_them():
+    client = make_app(config=STRICT)
+    r = client.get("/items", params={"nmae__eq": "typo", "name": "a"})
+    assert r.status_code == 422
+    (error,) = r.json()["detail"]
+    assert error["loc"] == ["query", "nmae__eq"]
+    assert "nmae__eq" in error["msg"]
+
+
+def test_strict_mode_rejects_known_field_with_ungenerated_operator():
+    client = make_app(config=STRICT)
+    # `regex` is gated off by default, so `name__regex` is not a generated
+    # parameter — in strict mode that is a client error, not a silent no-op.
+    assert client.get("/items", params={"name__regex": "^a"}).status_code == 422
+
+
+def test_strict_mode_collects_every_offending_param():
+    client = make_app(config=STRICT)
+    r = client.get("/items", params={"a__eq": "1", "b__eq": "2"})
+    assert r.status_code == 422
+    assert {e["loc"][1] for e in r.json()["detail"]} == {"a__eq", "b__eq"}
+
+
+def test_strict_mode_leaves_separator_free_params_alone():
+    app = FastAPI()
+
+    @app.get("/items")
+    def items(verbose: bool = False, q: FilterQuery = FilterDepends(User, config=STRICT)):
+        return {"verbose": verbose, "applied": [[c.field, c.op] for c in q.applied]}
+
+    client = TestClient(app)
+    r = client.get("/items", params={"verbose": "true", "name": "a", "unknown": "x"})
+    assert r.status_code == 200
+    assert r.json() == {"verbose": True, "applied": [["name", "eq"]]}
+
+
+def test_strict_mode_accepts_a_fully_recognized_request():
+    client = make_app(config=STRICT)
+    r = client.get("/items", params={"name__contains": "a", "sort": "-age", "limit": 5})
+    assert r.status_code == 200
+
+
+def test_ignore_mode_stays_the_default():
+    client = make_app()
+    assert client.get("/items", params={"nmae__eq": "typo"}).status_code == 200
+
+
+def test_source_and_param_mapping_compile_end_to_end():
+    client = make_app(target=Curated)
+    r = client.get(
+        "/items",
+        params={"age__gte": "21", "points__gte": "1.5", "sort": "-age,points"},
+    )
+    assert r.status_code == 200
+    body = r.json()
+    # `age` filters/sorts compile to the Mongo source name `ageYears`;
+    # the public param `points` compiles to the model field `score`.
+    assert body["mongo"] == {"ageYears": {"$gte": 21}, "score": {"$gte": 1.5}}
+    assert body["sort"] == [["ageYears", -1], ["score", 1]]
+
+
+def test_ops_none_params_do_not_exist_even_in_ignore_mode():
+    client = make_app(target=Curated)
+    r = client.get("/items", params={"ssn": "123-45-6789"})
+    assert r.status_code == 200
+    assert r.json()["applied"] == []
+
+
+def test_openapi_reflects_param_rename_and_curated_ops():
+    client = make_app(target=Curated)
+    spec = client.get("/openapi.json").json()
+    params = {p["name"] for p in spec["paths"]["/items"]["get"]["parameters"]}
+    assert {"points", "points__gte", "name__contains"} <= params
+    assert "score" not in params and "ssn" not in params
+    assert "name__startswith" not in params  # outside the exact ops list
