@@ -4,11 +4,54 @@ Derives type-safe filter/sort/pagination query parameters from the Pydantic
 models you already use, surfaces them in OpenAPI, and compiles them to a
 backend query (MongoDB first).
 
-This is a placeholder release reserving the package name while the library is
-under active design. See the design documents in the repository:
-https://github.com/eytanohana/fast-pager
+Quick start::
+
+    from fast_pager import FilterDepends, FilterQuery
+
+    @app.get("/users")
+    async def list_users(q: FilterQuery[User] = FilterDepends(User)):
+        return await db.users.find(q.to_mongo()).sort(q.sort_mongo() or None) \\
+            .skip(q.skip).limit(q.limit).to_list(None)
+
+Design documents: https://github.com/eytanohana/fast-pager
 """
 
 from importlib.metadata import version
+
+from .ast import Condition, FilterAST, Group, Page, Sort, SortDirection
+from .backends.base import QueryCompiler
+from .backends.mongo import MongoCompiler
+from .config import FilterConfig
+from .dependency import FilterDepends
+from .errors import CompilationError, ConfigurationError, FastPagerError
+from .introspection import FieldSpec, introspect_model
+from .operators import DEFAULT_REGISTRY, Arity, Container, Operator, Tier, ValueTypeRule
+from .query import FilterQuery
+
+__all__ = [
+    "DEFAULT_REGISTRY",
+    "Arity",
+    "CompilationError",
+    "Condition",
+    "ConfigurationError",
+    "Container",
+    "FastPagerError",
+    "FieldSpec",
+    "FilterAST",
+    "FilterConfig",
+    "FilterDepends",
+    "FilterQuery",
+    "Group",
+    "MongoCompiler",
+    "Operator",
+    "Page",
+    "QueryCompiler",
+    "Sort",
+    "SortDirection",
+    "Tier",
+    "ValueTypeRule",
+    "__version__",
+    "introspect_model",
+]
 
 __version__ = version("fast-pager")
