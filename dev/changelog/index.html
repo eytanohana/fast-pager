@@ -876,6 +876,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#002-stage-1-checkpoint-the-core-works" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        <code>0.0.2</code> — Stage 1 checkpoint: the core works
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#001-placeholder-release" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -946,6 +957,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#002-stage-1-checkpoint-the-core-works" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        <code>0.0.2</code> — Stage 1 checkpoint: the core works
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#001-placeholder-release" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -991,6 +1013,16 @@ unstable API, and breaking changes bump the minor version and are called out
 below. See the <a href="../design/05-roadmap-and-release/">Roadmap</a> for what's coming
 next, and the <a href="https://github.com/eytanohana/fast-pager/blob/main/DEVELOPMENT_PLAN.md">development plan</a>
 for the execution detail behind each stage.</p>
+<h2 id="002-stage-1-checkpoint-the-core-works"><code>0.0.2</code> — Stage 1 checkpoint: the core works<a class="headerlink" href="#002-stage-1-checkpoint-the-core-works" title="Permanent link">&para;</a></h2>
+<p>The README example is real: zero-config <code>FilterQuery[Model]</code> /
+<code>FilterDepends(Model)</code> for <strong>scalar fields</strong> (<code>str</code>, numerics, <code>bool</code>,
+datetimes, <code>UUID</code>, <code>Enum</code>/<code>Literal</code>, <code>Optional</code>), typed filter/sort/pagination
+query parameters in OpenAPI, standard 422s on bad input, and a MongoDB
+compiler producing plain query dicts (no driver dependency). Safety defaults
+on: <code>safe</code> operator profile, regex gated off, list/filter/limit caps,
+sortable allow-list. 100% test coverage, <code>mypy --strict</code> clean.</p>
+<p>Still to come for <code>v0.1.0</code>: per-field <code>Filterable(...)</code> control and final
+polish — see the roadmap below.</p>
 <h2 id="001-placeholder-release"><code>0.0.1</code> — placeholder release<a class="headerlink" href="#001-placeholder-release" title="Permanent link">&para;</a></h2>
 <p>The current state of the project on PyPI: the package name is reserved and
 the repository has CI + fully automated release tooling
