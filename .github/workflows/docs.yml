@@ -8,6 +8,10 @@ on:
 
 env:
   UV_VERSION: "0.11.16"
+  # zensical.org's mkdocs-material-compatible mike fork — not published to
+  # PyPI (upstream requires installing from git; see docs/contributing/docs-site.md).
+  # Pinned to a commit for reproducibility.
+  MIKE_ZENSICAL_REF: "2d4ad799442f4592db8ad53b179bfb33db8c69ac"
 
 permissions:
   contents: read
@@ -33,24 +37,48 @@ jobs:
       - name: Build site (strict)
         run: uv run --locked --only-group docs zensical build --clean --strict
 
-      - name: Upload site artifact
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        uses: actions/upload-pages-artifact@56afc609e74202658d3ffba0e8f6dda462b719fa  # v3
-        with:
-          path: site
-
-  deploy:
-    name: Deploy to GitHub Pages
+  # Versioned docs deploy to the gh-pages branch via mike (see
+  # docs/contributing/docs-site.md). Pushes to main publish/update the
+  # rolling "dev" version; tagged releases are handled by the
+  # `deploy-docs` job in release.yml so that a version only ever ships
+  # alongside its matching package release.
+  deploy-dev:
+    name: Deploy dev docs (main)
     needs: build
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     permissions:
-      pages: write
-      id-token: write
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+      contents: write   # mike pushes to gh-pages using GITHUB_TOKEN
     steps:
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e  # v4
+      - name: Checkout repository (full history)
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd  # v5
+        with:
+          fetch-depth: 0
+
+      - name: Setup uv and python
+        uses: astral-sh/setup-uv@681c641aba71e4a1c380be3ab5e12ad51f415867  # v7
+        with:
+          enable-cache: true
+          version: ${{ env.UV_VERSION }}
+
+      - name: Install docs dependencies
+        run: uv sync --locked --only-group docs
+
+      - name: Install Zensical-compatible mike
+        # The "mike" entry in pyproject.toml's docs group resolves to the
+        # PyPI package, which only knows how to build via mkdocs and can't
+        # drive a Zensical build. Override it with squidfunk/mike, a fork
+        # that shells out to `zensical build` instead (see
+        # docs/contributing/docs-site.md for why this two-step install
+        # exists and a link to Zensical's versioning roadmap).
+        run: |
+          uv pip install --python .venv \
+            "mike @ git+https://github.com/squidfunk/mike.git@${{ env.MIKE_ZENSICAL_REF }}"
+
+      - name: Configure git identity for gh-pages commits
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Deploy dev docs
+        run: uv run mike deploy --push --branch gh-pages dev
