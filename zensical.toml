@@ -43,6 +43,7 @@ nav = [
   { "Tutorial" = [
       "tutorial/filtering.md",
       "tutorial/sorting-pagination.md",
+      "tutorial/controlling-fields.md",
   ] },
   { "Reference" = [
       "reference/operators.md",
