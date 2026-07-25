@@ -4,17 +4,16 @@ icon: lucide/rocket
 
 # Getting Started
 
-!!! warning "Targeting v0.1.0 — not on PyPI yet"
-    This page describes the API `fast-pager` will ship in `v0.1.0`
-    (see the [development plan](https://github.com/eytanohana/fast-pager/blob/main/DEVELOPMENT_PLAN.md)).
-    The package name is reserved on PyPI as a `0.0.x` placeholder with no
-    functionality yet — don't `pip install` expecting this to work today.
-    Check the [Changelog](changelog.md) for what's actually released.
+!!! note "Pre-`0.1` API"
+    Everything on this page works on the current `0.0.x` releases (see the
+    [Changelog](changelog.md) for exactly what each version shipped). The API
+    is still stabilizing toward `v0.1.0` per the
+    [development plan](https://github.com/eytanohana/fast-pager/blob/main/DEVELOPMENT_PLAN.md),
+    so minor breaking changes are possible between `0.0.x` versions.
 
 ## Install
 
-Once `v0.1.0` is published, install `fast-pager` alongside FastAPI with your
-package manager of choice.
+Install `fast-pager` alongside FastAPI with your package manager of choice.
 
 === "uv"
 
