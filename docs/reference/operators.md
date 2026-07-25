@@ -17,6 +17,16 @@ available only when a field (or the whole app) opts into the `full` profile;
 `fast-pager` never enables them by default because they carry extra cost or
 risk (see [Safety](#safety-notes)).
 
+The profiles are only the *default* layer: which operators a specific field
+actually exposes can be overridden per type with
+`FilterConfig(type_profiles={...})` and per field with
+`Annotated[T, Filterable(ops=[...])]` (including `ops.ALL` / `ops.NONE`), or
+per route with `FilterConfig(operators={...})` — the full precedence ladder
+is in the
+[Controlling the filter surface](../tutorial/controlling-fields.md) tutorial.
+Whatever the layer, an operator that is not *valid* for the field's type is
+rejected at route registration, never at request time.
+
 ## Scalar types
 
 | Python / Pydantic type | Default operators (`safe`) | Additional in `full` |
