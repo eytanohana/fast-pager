@@ -33,6 +33,12 @@ Stage 1 deliverable.
   with a request → compiled-query example.
 - **Releases:** `./scripts/release.sh patch|minor|major` from a clean `main`
   with green CI. Maintainer approval required before any tag is pushed.
+- **Design-doc reconciliation:** every phase must end consistent with
+  `docs/design/*` — either the implementation follows the design, or the
+  design is improved first and the implementation conforms to it. Semantics
+  an implementation settles (tiering choices, precedence rules, edge-case
+  behavior) are codified into the design docs at integration time, verified
+  against the code, before the phase's release.
 
 ---
 
