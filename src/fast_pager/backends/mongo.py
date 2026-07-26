@@ -9,6 +9,11 @@ alike — this module imports no database driver. Safety guarantees:
 - Conditions on the same field merge into one sub-document
   (``{"age": {"$gte": 21, "$lt": 65}}``); genuinely conflicting clauses
   (e.g. two regex conditions on one field) fall back to ``$and``.
+- Array length comparisons (``len__ne``/``gt``/``gte``/``lt``/``lte``)
+  compile to ``$expr`` over ``$size``, guarded with ``$isArray`` so a
+  missing, null, or non-array value is treated as length 0 instead of a
+  query execution error. ``$expr`` clauses never merge — each stands alone
+  (``$expr`` takes a single expression).
 """
 
 from __future__ import annotations
@@ -58,6 +63,16 @@ class MongoCompiler:
             "text_search",
             "isnull",
             "exists",
+            "has",
+            "has_any",
+            "has_all",
+            "len__eq",
+            "len__ne",
+            "len__gt",
+            "len__gte",
+            "len__lt",
+            "len__lte",
+            "empty",
         }
     )
 
@@ -76,6 +91,11 @@ class MongoCompiler:
                 extras.append(self.compile_where(member))
                 continue
             key, fragment = self._fragment(member)
+            if key == "$expr":
+                # $expr takes a single expression — two $expr fragments must
+                # never merge into one sub-document.
+                extras.append({key: fragment})
+                continue
             bucket = merged.setdefault(key, {})
             if any(k in bucket for k in fragment):
                 # Same Mongo operator twice on one field cannot share a
@@ -106,7 +126,9 @@ class MongoCompiler:
     @staticmethod
     def _finalize(fragment: dict[str, Any]) -> Any:
         # A lone $eq simplifies to the bare value: {"age": {"$eq": 5}} → {"age": 5}.
-        if set(fragment) == {"$eq"}:
+        # A list value stays explicit — `empty=true` is pinned to the exact
+        # form {field: {"$eq": []}} (design doc 02).
+        if set(fragment) == {"$eq"} and not isinstance(fragment["$eq"], list):
             return fragment["$eq"]
         return fragment
 
@@ -128,6 +150,28 @@ class MongoCompiler:
         if op == "between":
             low, high = value
             return field, {"$gte": low, "$lte": high}
+        if op == "has":
+            # Mongo matches a scalar against array elements natively.
+            return field, {"$eq": value}
+        if op == "has_any":
+            return field, {"$in": list(value)}
+        if op == "has_all":
+            return field, {"$all": list(value)}
+        if op == "len__eq":
+            return field, {"$size": value}
+        if op in ("len__ne", "len__gt", "len__gte", "len__lt", "len__lte"):
+            # Aggregation $size errors on non-arrays; the $isArray guard makes
+            # a missing, null, or non-array value count as length 0 instead
+            # of failing the whole query at execution time.
+            length = {"$size": {"$cond": [{"$isArray": f"${field}"}, f"${field}", []]}}
+            return "$expr", {f"${op.removeprefix('len__')}": [length, value]}
+        if op == "empty":
+            # Pinned semantics (design doc 02): `true` matches the empty
+            # array, `false` matches at least one element; a missing field
+            # matches neither (use isnull/exists to reason about presence).
+            if value:
+                return field, {"$eq": []}
+            return f"{field}.0", {"$exists": True}
         if op in ("contains", "icontains"):
             fragment = {"$regex": re.escape(str(value))}
         elif op in ("startswith", "istartswith"):

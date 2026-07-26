@@ -55,6 +55,57 @@ def test_operator_table(condition, expected):
     assert where(condition) == expected
 
 
+def _len_expr(field, mongo_op, n):
+    """The guarded `$expr` form: missing/null/non-array counts as length 0."""
+    size = {"$size": {"$cond": [{"$isArray": f"${field}"}, f"${field}", []]}}
+    return {"$expr": {mongo_op: [size, n]}}
+
+
+@pytest.mark.parametrize(
+    ("condition", "expected"),
+    [
+        (Condition("tags", "has", "python"), {"tags": "python"}),
+        (Condition("tags", "has_any", ("a", "b")), {"tags": {"$in": ["a", "b"]}}),
+        (Condition("tags", "has_all", ("a", "b")), {"tags": {"$all": ["a", "b"]}}),
+        (Condition("tags", "len__eq", 3), {"tags": {"$size": 3}}),
+        (Condition("tags", "len__ne", 3), _len_expr("tags", "$ne", 3)),
+        (Condition("tags", "len__gt", 2), _len_expr("tags", "$gt", 2)),
+        (Condition("tags", "len__gte", 2), _len_expr("tags", "$gte", 2)),
+        (Condition("tags", "len__lt", 2), _len_expr("tags", "$lt", 2)),
+        (Condition("tags", "len__lte", 2), _len_expr("tags", "$lte", 2)),
+        # `empty` — pinned semantics (design doc 02): a missing field matches
+        # neither form; `true` is the exact `{"$eq": []}` spelling.
+        (Condition("tags", "empty", True), {"tags": {"$eq": []}}),
+        (Condition("tags", "empty", False), {"tags.0": {"$exists": True}}),
+    ],
+)
+def test_array_operator_table(condition, expected):
+    assert where(condition) == expected
+
+
+def test_two_len_range_conditions_never_share_one_dollar_expr():
+    result = where(
+        Condition("tags", "len__gte", 2),
+        Condition("tags", "len__lt", 5),
+    )
+    assert result == {"$and": [_len_expr("tags", "$gte", 2), _len_expr("tags", "$lt", 5)]}
+
+
+def test_len_range_combines_with_membership_via_and():
+    result = where(
+        Condition("tags", "has", "x"),
+        Condition("tags", "len__gt", 1),
+    )
+    assert result == {"$and": [{"tags": "x"}, _len_expr("tags", "$gt", 1)]}
+
+
+def test_len_range_inside_or_group():
+    result = compiler.compile_where(
+        Group(op="or", members=(Condition("tags", "len__gt", 1), Condition("a", "eq", 1)))
+    )
+    assert result == {"$or": [_len_expr("tags", "$gt", 1), {"a": 1}]}
+
+
 def test_supported_ops_covers_the_registry():
     assert MongoCompiler.supported_ops == frozenset(DEFAULT_REGISTRY)
 
