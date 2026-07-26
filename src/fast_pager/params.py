@@ -77,6 +77,7 @@ _OP_HELP: dict[str, str] = {
     "len__lt": "array length is less than",
     "len__lte": "array length is less than or equal to",
     "empty": "array is empty (true) or non-empty (false); a missing field matches neither",
+    "has_key": "map contains the key (the value is the key name)",
 }
 
 
@@ -146,12 +147,31 @@ def _is_excluded(spec: FieldSpec, exclude: frozenset[str]) -> bool:
 
 def _validated_ops(names: tuple[str, ...], spec: FieldSpec, where: str) -> tuple[str, ...]:
     """Validate an explicit operator list for one field, with rich errors."""
-    valid = all_operators_for(spec.py_type, spec.nullable, spec.container)
+    if spec.is_map_value:
+        # Value-at-key map parameters are eq-only by design (doc 02).
+        valid: tuple[str, ...] = ("eq",)
+    else:
+        valid = all_operators_for(spec.py_type, spec.nullable, spec.container)
     tname = type_name(spec.py_type)
-    if spec.container is Container.LIST:
+    if spec.is_map_value:
+        tname = f"map value {tname}"
+    elif spec.container is Container.LIST:
         tname = f"list[{tname}]"
     elif spec.container is Container.NESTED:
         tname = f"nested model {tname}"
+    elif spec.container is Container.LIST_OF_NESTED:
+        tname = f"list of nested model {tname}"
+    elif spec.container is Container.MAP:
+        tname = f"dict[str, {tname}]"
+    if spec.in_element and "text_search" in names:
+        # $text is a collection-level operator; it cannot apply to a single
+        # array element, so an explicit opt-in is a configuration error
+        # rather than a query that fails at execution time.
+        raise ConfigurationError(
+            f"operator 'text_search' is not valid for field {spec.public_name!r} in "
+            f"{where}: text search is collection-level and cannot be applied inside "
+            f"array elements"
+        )
     for op_name in names:
         if op_name not in DEFAULT_REGISTRY:
             raise ConfigurationError(
@@ -200,18 +220,34 @@ def _ops_for_spec(spec: FieldSpec, config: FilterConfig) -> tuple[Operator, ...]
     Array (``LIST``) fields resolve against the array operator profile;
     ``type_profiles`` entries never apply to them — a per-type profile lists
     *scalar* operators for a scalar type, not membership/shape operators for
-    arrays of that element type. Embedding (``NESTED``) fields expose only
-    the nullability operators (when nullable); ``type_profiles`` never
-    apply to them either — but they *do* apply to the scalar leaf fields
-    inside a nested model, exactly as at top level.
+    arrays of that element type. The same goes for the fixed
+    ``LIST_OF_NESTED`` (shape) and ``MAP`` (``has_key``) profiles. Embedding
+    (``NESTED``) fields expose only the nullability operators (when
+    nullable); ``type_profiles`` never apply to them either — but they *do*
+    apply to the scalar leaf fields inside a nested model, exactly as at top
+    level.
+
+    Fields **inside a `list[NestedModel]` element** (``in_element``) are
+    ``full``-tier as a whole (design doc 02: `elem` ships full-tier given
+    the same-element subtlety): under the ``safe`` default profile they
+    generate *nothing*; an explicit opt-in — ``default_profile="full"``,
+    ``Filterable(ops=...)`` on the element field, or a
+    ``FilterConfig.operators`` entry naming the ``elem`` path — enables
+    them. ``text_search`` never applies inside elements (it is
+    collection-level): profile-based resolution drops it, explicit lists
+    raise. Value-at-key map parameters (``is_map_value``) expose ``eq``
+    only, whatever the layers say.
 
     Raises :class:`ConfigurationError` when an explicitly configured operator
     is unknown or not valid for the field's type.
     """
     overrides = config.operators or {}
     field_ops = spec.filterable.ops if spec.filterable is not None else None
+    elem_gated = spec.in_element and config.default_profile != "full"
     if spec.public_name in overrides:
         names = _validated_ops(tuple(overrides[spec.public_name]), spec, "FilterConfig.operators")
+    elif spec.is_map_value:
+        names = () if elem_gated else ("eq",)
     elif isinstance(field_ops, OpsMarker):
         # ops.ALL — everything the type supports, still regex-gated.
         names = all_operators_for(spec.py_type, spec.nullable, spec.container)
@@ -219,6 +255,10 @@ def _ops_for_spec(spec: FieldSpec, config: FilterConfig) -> tuple[Operator, ...]
             names = tuple(n for n in names if n != "regex")
     elif field_ops is not None:
         names = _validated_ops(tuple(field_ops), spec, "Filterable(ops=...)")
+    elif elem_gated:
+        # elem paths are full-tier as a whole; without an explicit opt-in
+        # the safe profile generates nothing for them.
+        names = ()
     else:
         profile_names = (
             _match_type_profile(spec.py_type, config)
@@ -237,7 +277,22 @@ def _ops_for_spec(spec: FieldSpec, config: FilterConfig) -> tuple[Operator, ...]
             if not config.allow_regex:
                 # `regex` is additionally config-gated even under the full profile.
                 names = tuple(n for n in names if n != "regex")
+    if spec.in_element:
+        # Collection-level text search never applies inside array elements;
+        # explicit lists already raised in _validated_ops.
+        names = tuple(n for n in names if n != "text_search")
     return tuple(DEFAULT_REGISTRY[n] for n in names)
+
+
+def _check_map_key(value: str | None) -> str | None:
+    """AfterValidator for ``has_key`` values: the key becomes a segment of a
+    backend field path (``metadata.<key>``), so path metacharacters in user
+    input are rejected with a standard 422."""
+    if value is None:
+        return value
+    if not value or "." in value or "$" in value or "\x00" in value:
+        raise ValueError("map keys must be non-empty and must not contain '.', '$', or null bytes")
+    return value
 
 
 def _value_annotation(spec: FieldSpec, op: Operator, config: FilterConfig) -> Any:
@@ -245,8 +300,13 @@ def _value_annotation(spec: FieldSpec, op: Operator, config: FilterConfig) -> An
 
     ``spec.py_type`` is the element type for array fields, so ``has`` takes a
     single element value and ``has_any``/``has_all`` take element lists; the
-    ``len__*`` operators are ``int``-valued regardless of the field type.
+    ``len__*`` operators are ``int``-valued regardless of the field type, and
+    ``has_key`` is ``str``-valued (the key name) with the path-metacharacter
+    guard attached.
     """
+    if op.name == "has_key":
+        # The only STR-valued operator today; typed str whatever T is.
+        return Annotated[Optional[str], AfterValidator(_check_map_key)]
     base: Any = int if op.value_type is ValueTypeRule.INT else spec.py_type
     if op.arity is Arity.BOOL:
         return Optional[bool]
@@ -371,25 +431,46 @@ def _resolve_sortable(
 
     With no ``FilterConfig.sortable`` allow-list, the default is "sortable
     iff filterable" for scalar fields — nested scalar leaves included, by
-    their public name (``sort=-address__city``) — while array and embedding
-    fields are *not* sortable by default (sorting on Mongo array fields
-    uses min/max element semantics, and sorting by a whole subdocument is
-    rarely what anyone means) — plus fields forced in with
-    ``Filterable(sortable=True)`` (which can make an ``ops.NONE`` field
+    their public name (``sort=-address__city``) — while array, embedding,
+    and map fields are *not* sortable by default (sorting on Mongo array
+    fields uses min/max element semantics, and sorting by a whole
+    subdocument or map is rarely what anyone means) — plus fields forced in
+    with ``Filterable(sortable=True)`` (which can make an ``ops.NONE`` field
     sort-only, or an array field sortable, eyes open), minus fields opted
     out with ``Filterable(sortable=False)``. When the allow-list *is* given
-    it wins (it may name array fields) — except ``sortable=False``, which is
-    final and turns a conflicting allow-list entry into a
-    :class:`ConfigurationError`.
+    it wins (it may name array fields, or a map's enumerated value-at-key
+    paths) — except ``sortable=False``, which is final and turns a
+    conflicting allow-list entry into a :class:`ConfigurationError`.
+
+    Fields **inside `list[NestedModel]` elements are never sortable**:
+    "sort users by the amount of an order" has no single-document meaning.
+    They are excluded from the defaults (a ``Filterable(sortable=True)`` on
+    the element model's field is ignored for its ``elem`` uses), and naming
+    an ``elem`` path in the allow-list raises :class:`ConfigurationError`.
     """
-    flags = {s.public_name: s.filterable.sortable for s in specs if s.filterable is not None}
+    in_element = {s.public_name for s in specs if s.in_element}
+    flags = {
+        s.public_name: s.filterable.sortable
+        for s in specs
+        if s.filterable is not None and not s.in_element
+    }
     non_sortable = {name for name, flag in flags.items() if flag is False}
     if config.sortable is None:
         forced = {name for name, flag in flags.items() if flag is True}
-        base = {s.public_name for s in filterable_specs if s.container is Container.SCALAR}
+        base = {
+            s.public_name
+            for s in filterable_specs
+            if s.container is Container.SCALAR and not s.in_element and not s.is_map_value
+        }
         return frozenset((base | forced) - non_sortable)
     known = {s.public_name for s in specs}
     for name in config.sortable:
+        if name in in_element:
+            raise ConfigurationError(
+                f"field {name!r} in FilterConfig.sortable is inside a "
+                f"list[...] array element on model {model.__name__}; elem paths "
+                f"are never sortable"
+            )
         if name in non_sortable:
             raise ConfigurationError(
                 f"field {name!r} in FilterConfig.sortable is marked "
@@ -400,7 +481,7 @@ def _resolve_sortable(
             raise ConfigurationError(
                 f"field {name!r} in FilterConfig.sortable is not a filterable field "
                 f"of model {model.__name__}; sortable candidates: "
-                f"{', '.join(sorted(known - non_sortable))}"
+                f"{', '.join(sorted(known - non_sortable - in_element))}"
             )
     return frozenset(config.sortable)
 

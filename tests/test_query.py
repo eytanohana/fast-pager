@@ -65,6 +65,39 @@ def test_array_conditions_flow_through_the_ast():
     assert q.to_mongo() == {"tags": {"$in": ["a", "b"]}}
 
 
+def test_elem_conditions_flow_through_the_ast_with_the_marker():
+    from conftest import Shopper
+
+    plan = build_plan(Shopper, FilterConfig(default_profile="full"))
+    q = FilterQuery(
+        plan,
+        plan.params_model.model_validate(
+            {"orders__elem__amount__gte": 100, "orders__elem__status": "refunded"}
+        ),
+    )
+    assert {(c.field, c.op) for c in q.applied} == {
+        ("orders.$elem.amount", "gte"),
+        ("orders.$elem.status", "eq"),
+    }
+    assert q.to_mongo() == {
+        "orders": {"$elemMatch": {"amount": {"$gte": 100.0}, "status": "refunded"}}
+    }
+
+
+def test_map_conditions_compile_end_to_end():
+    from conftest import Profile
+
+    plan = build_plan(Profile, FilterConfig())
+    q = FilterQuery(
+        plan,
+        plan.params_model.model_validate({"metadata__has_key": "region", "metadata__tier": "gold"}),
+    )
+    assert q.to_mongo() == {
+        "metadata.region": {"$exists": True},
+        "metadata.tier": "gold",
+    }
+
+
 def test_repr_is_informative():
     q = make_query({"age__gte": 21})
     text = repr(q)

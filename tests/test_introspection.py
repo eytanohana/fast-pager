@@ -8,7 +8,7 @@ from uuid import UUID
 import pytest
 from pydantic import BaseModel, Field
 
-from conftest import Address, Aliased, Color, Customer, Tagged, User
+from conftest import Address, Aliased, Color, Customer, Order, Profile, Shopper, Tagged, User
 from fast_pager import ConfigurationError, Filterable, ops
 from fast_pager.introspection import introspect_model, public_field_names
 from fast_pager.operators import Container
@@ -173,20 +173,20 @@ def test_unsupported_list_shapes_are_skipped():
     class M(BaseModel):
         ok: list[str]
         bare: list
-        of_nested: list[Inner]
         of_bytes: list[bytes]
         of_optional: list[str | None]
         frozen: frozenset[str]
+        set_of_nested: set[Inner]  # element models are list-only (unhashable anyway)
 
     assert set(spec_map(M)) == {"ok"}
 
 
-def test_filterable_on_list_of_nested_models_raises_naming_field_and_type():
+def test_filterable_on_set_of_nested_models_raises_naming_field_and_type():
     class Inner(BaseModel):
         city: str
 
     class M(BaseModel):
-        addresses: Annotated[list[Inner], Filterable(ops=["has"])]
+        addresses: Annotated[set[Inner], Filterable(ops=["has"])]
 
     with pytest.raises(ConfigurationError, match=r"'addresses'.*not a supported"):
         introspect_model(M)
@@ -347,10 +347,178 @@ def test_custom_separator_joins_nested_public_names():
     assert "address.geo.lat" in specs
 
 
-def test_list_of_nested_models_and_dicts_stay_skipped():
-    class M(BaseModel):
-        ok: str
-        addresses: list[Address]
-        meta: dict[str, str]
+# ---------------------------------------------------------------------------
+# Phase 3c: arrays of nested models → `elem` paths, `$elem` source marker.
+# ---------------------------------------------------------------------------
 
-    assert set(spec_map(M)) == {"ok"}
+
+def test_list_of_nested_field_gets_its_own_spec():
+    spec = spec_map(Shopper)["orders"]
+    assert spec.container is Container.LIST_OF_NESTED
+    assert spec.py_type is Order
+    assert spec.nullable is False
+    assert spec.source == "orders"
+    assert spec.in_element is False
+
+
+def test_element_fields_appear_under_the_elem_segment():
+    amount = spec_map(Shopper)["orders__elem__amount"]
+    assert amount.path == ("orders", "elem", "amount")
+    assert amount.source == "orders.$elem.amount"
+    assert amount.py_type is float
+    assert amount.container is Container.SCALAR
+    assert amount.in_element is True
+
+
+def test_optional_list_of_nested_is_nullable_and_children_generated():
+    specs = spec_map(Shopper)
+    assert specs["past_orders"].nullable is True
+    assert specs["past_orders"].container is Container.LIST_OF_NESTED
+    assert specs["past_orders__elem__status"].source == "past_orders.$elem.status"
+
+
+def test_optional_element_field_is_nullable():
+    spec = spec_map(Shopper)["orders__elem__note"]
+    assert spec.nullable is True and spec.in_element is True
+
+
+def test_source_override_inside_an_element_composes_into_the_marked_path():
+    assert spec_map(Shopper)["orders__elem__ref"].source == "orders.$elem.reference"
+
+
+def test_source_on_the_array_field_renames_that_segment():
+    class M(BaseModel):
+        orders: Annotated[list[Order], Filterable(source="orderList")]
+
+    specs = spec_map(M)
+    assert specs["orders"].source == "orderList"
+    assert specs["orders__elem__amount"].source == "orderList.$elem.amount"
+
+
+def test_nested_arrays_inside_elements_get_their_own_elem_hop():
+    sku = spec_map(Shopper)["orders__elem__items__elem__sku"]
+    assert sku.source == "orders.$elem.items.$elem.sku"
+    assert sku.in_element is True
+    items = spec_map(Shopper)["orders__elem__items"]
+    assert items.container is Container.LIST_OF_NESTED
+    assert items.in_element is True
+
+
+def test_elem_hop_counts_as_one_depth_boundary():
+    one = {s.public_name for s in introspect_model(Shopper, max_depth=1)}
+    assert "orders__elem__amount" in one  # 1 boundary
+    assert "orders__elem__items" in one  # the array at the bound keeps its spec
+    assert "orders__elem__items__elem__sku" not in one  # 2 boundaries
+    zero = {s.public_name for s in introspect_model(Shopper, max_depth=0)}
+    assert "orders" in zero
+    assert not any(name.startswith("orders__") for name in zero)
+
+
+def test_self_referential_element_model_truncates_at_the_depth_bound():
+    class Node(BaseModel):
+        value: int
+        children: list["Node"] = []
+
+    Node.model_rebuild()
+    specs = spec_map(Node)
+    assert "children__elem__value" in specs
+    assert "children__elem__children__elem__value" in specs  # 2 boundaries
+    assert "children__elem__children__elem__children__elem__value" not in specs
+
+
+def test_ops_none_on_the_array_field_excludes_the_whole_subtree():
+    class M(BaseModel):
+        orders: Annotated[list[Order], Filterable(ops=ops.NONE)]
+
+    specs = spec_map(M)
+    assert "orders" in specs  # the spec exists and carries the opt-out
+    assert not any(name.startswith("orders__") for name in specs)
+
+
+def test_embedding_inside_an_element_is_flagged_in_element():
+    class M(BaseModel):
+        addresses: list[Address]
+
+    specs = spec_map(M)
+    assert specs["addresses__elem__geo"].container is Container.NESTED
+    assert specs["addresses__elem__geo"].in_element is True
+    assert specs["addresses__elem__geo__lat"].source == "addresses.$elem.geo.lat"
+
+
+# ---------------------------------------------------------------------------
+# Phase 3c: dict[str, T] maps — gated behind an explicit Filterable.
+# ---------------------------------------------------------------------------
+
+
+def test_dict_without_filterable_stays_skipped():
+    assert "attrs" not in spec_map(Profile)
+
+
+def test_filterable_enables_a_map_field():
+    spec = spec_map(Profile)["counters"]
+    assert spec.container is Container.MAP
+    assert spec.py_type is int
+    assert spec.nullable is False
+    assert spec.source == "counters"
+
+
+def test_enumerated_keys_produce_typed_value_at_key_specs():
+    specs = spec_map(Profile)
+    region = specs["metadata__region"]
+    assert region.path == ("metadata", "region")
+    assert region.source == "metadata.region"
+    assert region.py_type is str
+    assert region.container is Container.SCALAR
+    assert region.is_map_value is True
+    assert region.filterable is None  # the Filterable belongs to the map field
+    assert "metadata__tier" in specs
+    assert not specs["metadata"].is_map_value
+
+
+def test_optional_map_is_nullable():
+    class M(BaseModel):
+        meta: Annotated[Optional[dict[str, str]], Filterable()] = None
+
+    spec = spec_map(M)["meta"]
+    assert spec.container is Container.MAP and spec.nullable is True
+
+
+def test_ops_none_on_a_map_field_suppresses_its_key_specs():
+    class M(BaseModel):
+        meta: Annotated[dict[str, str], Filterable(ops=ops.NONE, keys=["region"])]
+
+    specs = spec_map(M)
+    assert "meta" in specs  # the spec exists and carries the opt-out
+    assert "meta__region" not in specs
+
+
+def test_map_inside_a_nested_model_composes_the_dotted_source():
+    class Inner(BaseModel):
+        meta: Annotated[dict[str, str], Filterable(keys=["region"])]
+
+    class M(BaseModel):
+        profile: Inner
+
+    specs = spec_map(M)
+    assert specs["profile__meta"].container is Container.MAP
+    assert specs["profile__meta__region"].source == "profile.meta.region"
+
+
+@pytest.mark.parametrize(
+    "annotation",
+    [dict, dict[int, str], dict[str, bytes], dict[str, list[str]]],
+)
+def test_filterable_on_unsupported_map_shapes_raises(annotation):
+    class M(BaseModel):
+        meta: Annotated[annotation, Filterable()]
+
+    with pytest.raises(ConfigurationError, match=r"'meta'.*not a supported\s+map type"):
+        introspect_model(M)
+
+
+def test_filterable_keys_on_a_non_map_field_raises():
+    class M(BaseModel):
+        name: Annotated[str, Filterable(keys=["region"])]
+
+    with pytest.raises(ConfigurationError, match=r"'name'.*keys.*not a dict"):
+        introspect_model(M)

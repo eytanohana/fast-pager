@@ -63,7 +63,10 @@ class FilterConfig:
             are generated; deeper fields are silently skipped. A nested
             model sitting exactly at the bound still gets its own
             parameters (``isnull`` when nullable) but none of its children.
-            ``0`` disables nested-model traversal entirely. The bound also
+            The element hop of a ``list[NestedModel]`` field counts as one
+            boundary, exactly like an embedding (``orders__elem__amount``
+            is 1 level; the ``elem`` token itself adds none). ``0``
+            disables nested-model traversal entirely. The bound also
             truncates self-referential models, keeping the parameter
             surface finite.
         default_limit: ``limit`` value when the client does not send one.

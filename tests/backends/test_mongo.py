@@ -197,6 +197,100 @@ def test_compile_order_and_page():
     assert compiler.compile_page(Page(limit=10, offset=30)) == {"skip": 30, "limit": 10}
 
 
+# ---------------------------------------------------------------------------
+# Phase 3c: `$elem`-marked paths → a single $elemMatch per array field.
+# ---------------------------------------------------------------------------
+
+
+def test_same_array_elem_conditions_compile_into_one_elem_match():
+    result = where(
+        Condition("orders.$elem.amount", "gte", 100),
+        Condition("orders.$elem.status", "eq", "refunded"),
+    )
+    # Same-element semantics: ONE $elemMatch, keys relative to the element.
+    assert result == {"orders": {"$elemMatch": {"amount": {"$gte": 100}, "status": "refunded"}}}
+
+
+def test_same_element_field_conditions_merge_inside_the_elem_match():
+    result = where(
+        Condition("orders.$elem.amount", "gte", 100),
+        Condition("orders.$elem.amount", "lt", 500),
+    )
+    assert result == {"orders": {"$elemMatch": {"amount": {"$gte": 100, "$lt": 500}}}}
+
+
+def test_distinct_array_fields_each_get_their_own_elem_match():
+    result = where(
+        Condition("orders.$elem.status", "eq", "paid"),
+        Condition("returns.$elem.status", "eq", "open"),
+        Condition("name", "eq", "a"),
+    )
+    assert result == {
+        "name": "a",
+        "orders": {"$elemMatch": {"status": "paid"}},
+        "returns": {"$elemMatch": {"status": "open"}},
+    }
+
+
+def test_elem_match_merges_with_shape_conditions_on_the_same_array():
+    result = where(
+        Condition("orders", "len__eq", 2),
+        Condition("orders.$elem.status", "eq", "paid"),
+    )
+    assert result == {"orders": {"$size": 2, "$elemMatch": {"status": "paid"}}}
+
+
+def test_nested_model_inside_an_element_uses_relative_dotted_keys():
+    result = where(Condition("orders.$elem.supplier.name", "eq", "acme"))
+    assert result == {"orders": {"$elemMatch": {"supplier.name": "acme"}}}
+
+
+def test_nested_elem_hops_nest_the_elem_matches():
+    result = where(
+        Condition("orders.$elem.items.$elem.sku", "eq", "x-1"),
+        Condition("orders.$elem.items.$elem.qty", "gte", 2),
+        Condition("orders.$elem.status", "eq", "paid"),
+    )
+    assert result == {
+        "orders": {
+            "$elemMatch": {
+                "status": "paid",
+                "items": {"$elemMatch": {"sku": "x-1", "qty": {"$gte": 2}}},
+            }
+        }
+    }
+
+
+def test_lone_elem_condition_inside_an_or_group():
+    result = compiler.compile_where(
+        Group(
+            op="or",
+            members=(Condition("orders.$elem.status", "eq", "paid"), Condition("a", "eq", 1)),
+        )
+    )
+    assert result == {"$or": [{"orders": {"$elemMatch": {"status": "paid"}}}, {"a": 1}]}
+
+
+def test_has_key_compiles_the_key_into_the_path():
+    assert where(Condition("metadata", "has_key", "region")) == {
+        "metadata.region": {"$exists": True}
+    }
+
+
+def test_has_key_inside_an_element():
+    assert where(Condition("orders.$elem.meta", "has_key", "gift")) == {
+        "orders": {"$elemMatch": {"meta.gift": {"$exists": True}}}
+    }
+
+
+@pytest.mark.parametrize("key", ["", "a.b", "a$b", "$where", "a\x00b"])
+def test_has_key_rejects_unsafe_keys_with_compilation_error(key):
+    # Defense in depth behind the request-level 422 validator: direct AST
+    # users get the same path-injection guarantee.
+    with pytest.raises(CompilationError, match="unsafe map key"):
+        where(Condition("metadata", "has_key", key))
+
+
 def test_or_group_member_that_is_a_group():
     result = compiler.compile_where(
         Group(

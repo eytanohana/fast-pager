@@ -163,6 +163,59 @@ def test_nullability_operators_apply_to_nested_container():
     assert Container.NESTED not in DEFAULT_REGISTRY["eq"].applies_to
 
 
+# ---------------------------------------------------------------------------
+# Phase 3c: LIST_OF_NESTED (shape-only) and MAP (has_key) profiles.
+# ---------------------------------------------------------------------------
+
+NESTED_ARRAY_SAFE = {"len__eq", "empty"}
+
+
+def test_list_of_nested_safe_profile_is_shape_only():
+    ops = operators_for(object, nullable=False, profile="safe", container=Container.LIST_OF_NESTED)
+    assert set(ops) == NESTED_ARRAY_SAFE  # no has/has_any/has_all: whole-document equality
+
+
+def test_list_of_nested_full_profile_adds_the_len_comparisons():
+    ops = operators_for(object, nullable=False, profile="full", container=Container.LIST_OF_NESTED)
+    assert set(ops) == NESTED_ARRAY_SAFE | ARRAY_FULL
+
+
+def test_nullable_list_of_nested_adds_isnull_and_exists():
+    safe = operators_for(object, nullable=True, profile="safe", container=Container.LIST_OF_NESTED)
+    full = operators_for(object, nullable=True, profile="full", container=Container.LIST_OF_NESTED)
+    assert "isnull" in safe and "exists" not in safe
+    assert "isnull" in full and "exists" in full
+
+
+def test_map_profile_is_has_key_plus_nullability():
+    assert set(operators_for(str, nullable=False, profile="full", container=Container.MAP)) == {
+        "has_key"
+    }
+    safe = operators_for(str, nullable=True, profile="safe", container=Container.MAP)
+    assert set(safe) == {"has_key", "isnull"}
+
+
+def test_has_key_registry_record():
+    op = DEFAULT_REGISTRY["has_key"]
+    assert op.arity is Arity.SINGLE
+    assert op.value_type is ValueTypeRule.STR
+    assert op.tier is Tier.SAFE
+    assert op.applies_to == frozenset({Container.MAP})
+
+
+def test_shape_operators_apply_to_both_array_containers():
+    for name in ("len__eq", "len__gte", "empty"):
+        assert DEFAULT_REGISTRY[name].applies_to == frozenset(
+            {Container.LIST, Container.LIST_OF_NESTED}
+        )
+    assert Container.LIST_OF_NESTED not in DEFAULT_REGISTRY["has"].applies_to
+
+
+def test_nullability_operators_apply_to_every_container():
+    assert DEFAULT_REGISTRY["isnull"].applies_to == frozenset(Container)
+    assert DEFAULT_REGISTRY["exists"].applies_to == frozenset(Container)
+
+
 def test_array_registry_records():
     assert DEFAULT_REGISTRY["has"].arity is Arity.SINGLE
     assert DEFAULT_REGISTRY["has"].value_type is ValueTypeRule.SAME_AS_FIELD

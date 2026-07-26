@@ -11,7 +11,24 @@ import enum
 from dataclasses import dataclass, field
 from typing import Any, Literal
 
-__all__ = ["Condition", "FilterAST", "Group", "Page", "Sort", "SortDirection"]
+__all__ = [
+    "ELEM_SOURCE_MARKER",
+    "Condition",
+    "FilterAST",
+    "Group",
+    "Page",
+    "Sort",
+    "SortDirection",
+]
+
+#: The path segment marking a `list[NestedModel]` element boundary inside a
+#: Condition's dotted ``field`` path: ``"orders.$elem.amount"`` means "the
+#: ``amount`` of an element of the ``orders`` array". Part of the AST
+#: contract — backends group same-array `elem` conditions into their
+#: element-match construct (Mongo: one ``$elemMatch`` per array field).
+#: Mongo forbids ``$``-prefixed field names, so the marker can never collide
+#: with a real document key.
+ELEM_SOURCE_MARKER = "$elem"
 
 
 class SortDirection(enum.Enum):

@@ -5,7 +5,7 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from pydantic import BaseModel
 
-from conftest import Aliased, Curated, Customer, Tagged, User
+from conftest import Aliased, Curated, Customer, Profile, Shopper, Tagged, User
 from fast_pager import ConfigurationError, FilterConfig, FilterDepends, FilterQuery
 
 
@@ -390,6 +390,140 @@ def test_nested_subtree_exclusion_end_to_end():
     r = client.get("/items", params={"billing__city": "x", "name": "a"})
     assert r.status_code == 200
     assert r.json()["applied"] == [["name", "eq"]]
+
+
+# ---------------------------------------------------------------------------
+# Phase 3c: arrays of nested models + maps end to end.
+# ---------------------------------------------------------------------------
+
+FULL = FilterConfig(default_profile="full")
+
+
+def test_elem_request_compiles_to_a_single_elem_match_group():
+    client = make_app(target=Shopper, config=FULL)
+    r = client.get(
+        "/items",
+        params=[
+            ("orders__elem__amount__gte", "100"),
+            ("orders__elem__status", "refunded"),
+            ("orders__elem__ref__startswith", "INV-"),
+            ("name", "alice"),
+        ],
+    )
+    assert r.status_code == 200
+    assert r.json()["mongo"] == {
+        "name": "alice",
+        "orders": {
+            "$elemMatch": {
+                "amount": {"$gte": 100.0},
+                "status": "refunded",
+                # `source=` renames compose inside the element, relatively.
+                "reference": {"$regex": "^INV\\-"},
+            }
+        },
+    }
+
+
+def test_elem_and_shape_conditions_merge_on_the_array_field():
+    client = make_app(target=Shopper, config=FULL)
+    r = client.get(
+        "/items",
+        params={"orders__len__eq": "2", "orders__elem__status": "paid"},
+    )
+    assert r.json()["mongo"] == {"orders": {"$size": 2, "$elemMatch": {"status": "paid"}}}
+
+
+def test_nested_elem_request_nests_the_elem_matches():
+    client = make_app(target=Shopper, config=FULL)
+    r = client.get(
+        "/items",
+        params={"orders__elem__items__elem__sku": "x-1", "orders__elem__status": "paid"},
+    )
+    assert r.json()["mongo"] == {
+        "orders": {"$elemMatch": {"status": "paid", "items": {"$elemMatch": {"sku": "x-1"}}}}
+    }
+
+
+def test_strict_mode_rejects_elem_params_under_the_safe_profile():
+    # elem paths are full-tier: under the safe default they are simply not
+    # generated, so in strict mode they are a client error.
+    client = make_app(target=Shopper, config=FilterConfig(unknown_params="strict"))
+    assert client.get("/items", params={"orders__elem__status": "paid"}).status_code == 422
+
+
+@pytest.mark.parametrize(
+    "params",
+    [
+        {"orders__elem__amount__gte": "expensive"},
+        {"orders__elem__status": "shipped"},  # outside the Literal
+        {"sort": "orders__elem__amount"},  # elem paths are never sortable
+        {"sort": "orders"},  # arrays are not sortable by default
+    ],
+)
+def test_elem_bad_values_return_422(params):
+    client = make_app(target=Shopper, config=FULL)
+    assert client.get("/items", params=params).status_code == 422
+
+
+def test_openapi_shows_typed_elem_params():
+    client = make_app(target=Shopper, config=FULL)
+    spec = client.get("/openapi.json").json()
+    params = {p["name"]: p for p in spec["paths"]["/items"]["get"]["parameters"]}
+    assert params["orders__elem__amount__gte"]["schema"]["anyOf"][0]["type"] == "number"
+    status = params["orders__elem__status"]["schema"]["anyOf"][0]
+    assert status == {"enum": ["paid", "refunded"], "type": "string"}
+    assert params["orders__len__eq"]["schema"]["anyOf"][0]["type"] == "integer"
+    assert "orders" not in params  # no bare-eq sugar for the array itself
+    assert "orders__has" not in params  # membership is not part of the shape family
+
+
+def test_openapi_hides_elem_params_under_the_safe_profile():
+    client = make_app(target=Shopper)
+    spec = client.get("/openapi.json").json()
+    params = {p["name"] for p in spec["paths"]["/items"]["get"]["parameters"]}
+    assert not any("__elem__" in name for name in params)
+    assert "orders__len__eq" in params  # shape stays safe-tier
+
+
+def test_map_request_compiles_keys_into_dotted_paths():
+    client = make_app(target=Profile)
+    r = client.get(
+        "/items",
+        params={"metadata__has_key": "region", "metadata__tier": "gold", "counters__has_key": "x"},
+    )
+    assert r.status_code == 200
+    assert r.json()["mongo"] == {
+        "metadata.region": {"$exists": True},
+        "metadata.tier": "gold",
+        "counters.x": {"$exists": True},
+    }
+
+
+@pytest.mark.parametrize("key", ["a.b", "a$b", "$where", "", "a%00b"])
+def test_has_key_path_metacharacters_return_422(key):
+    client = make_app(target=Profile)
+    r = client.get(f"/items?metadata__has_key={key}")
+    assert r.status_code == 422
+
+
+def test_unenumerated_map_keys_are_not_filterable():
+    strict = make_app(target=Profile, config=FilterConfig(unknown_params="strict"))
+    assert strict.get("/items", params={"metadata__plan": "pro"}).status_code == 422
+    lax = make_app(target=Profile)
+    r = lax.get("/items", params={"metadata__plan": "pro"})
+    assert r.status_code == 200 and r.json()["applied"] == []
+
+
+def test_openapi_shows_typed_map_params():
+    client = make_app(target=Profile)
+    spec = client.get("/openapi.json").json()
+    params = {p["name"]: p for p in spec["paths"]["/items"]["get"]["parameters"]}
+    assert params["metadata__has_key"]["schema"]["anyOf"][0]["type"] == "string"
+    assert params["metadata__region"]["schema"]["anyOf"][0]["type"] == "string"
+    assert params["counters__has_key"]["schema"]["anyOf"][0]["type"] == "string"
+    assert "key" in params["metadata__has_key"]["description"]
+    assert "attrs__has_key" not in params  # maps are gated off by default
+    assert "metadata__plan" not in params  # only enumerated keys exist
 
 
 def test_openapi_shows_typed_nested_params():

@@ -31,7 +31,7 @@ __all__ = [
 
 
 class Container(enum.Enum):
-    """The container shape of a model field (``SCALAR``, ``LIST``, ``NESTED`` so far)."""
+    """The container shape of a model field."""
 
     SCALAR = "scalar"
     LIST = "list"
@@ -55,6 +55,7 @@ class ValueTypeRule(enum.Enum):
     SAME_AS_FIELD = "same_as_field"
     BOOL = "bool"
     INT = "int"
+    STR = "str"
 
 
 class Tier(enum.Enum):
@@ -77,7 +78,14 @@ class Operator:
 
 _SCALAR = frozenset({Container.SCALAR})
 _LIST = frozenset({Container.LIST})
-_NULLABLE_CONTAINERS = frozenset({Container.SCALAR, Container.LIST, Container.NESTED})
+#: Shape operators (`len__*`, `empty`) apply to arrays of scalars *and*
+#: arrays of nested models alike — they reason about the array, not the
+#: elements, so the element kind is irrelevant.
+_ARRAY_SHAPED = frozenset({Container.LIST, Container.LIST_OF_NESTED})
+_MAP = frozenset({Container.MAP})
+#: Every container shape can be Optional, so the nullability pair applies
+#: everywhere.
+_NULLABLE_CONTAINERS = frozenset(Container)
 
 
 def _op(
@@ -111,8 +119,7 @@ DEFAULT_REGISTRY: dict[str, Operator] = {
         # `regex` is FULL-tier *and* additionally gated by FilterConfig.allow_regex.
         _op("regex", tier=Tier.FULL),
         _op("text_search", tier=Tier.FULL),
-        # Nullability operators apply to scalar, array, and nested-model
-        # (embedding) fields alike.
+        # Nullability operators apply to every container shape alike.
         _op(
             "isnull",
             arity=Arity.BOOL,
@@ -131,15 +138,21 @@ DEFAULT_REGISTRY: dict[str, Operator] = {
         _op("has", applies_to=_LIST),
         _op("has_any", arity=Arity.LIST, applies_to=_LIST),
         _op("has_all", arity=Arity.LIST, applies_to=_LIST),
-        _op("len__eq", value_type=ValueTypeRule.INT, applies_to=_LIST),
+        # The shape operators also apply to `list[NestedModel]` fields.
+        _op("len__eq", value_type=ValueTypeRule.INT, applies_to=_ARRAY_SHAPED),
         # The length comparisons compile to `$expr` (no index support), so
         # they are FULL-tier; `len__eq` compiles to plain `$size` and is SAFE.
-        _op("len__ne", value_type=ValueTypeRule.INT, tier=Tier.FULL, applies_to=_LIST),
-        _op("len__gt", value_type=ValueTypeRule.INT, tier=Tier.FULL, applies_to=_LIST),
-        _op("len__gte", value_type=ValueTypeRule.INT, tier=Tier.FULL, applies_to=_LIST),
-        _op("len__lt", value_type=ValueTypeRule.INT, tier=Tier.FULL, applies_to=_LIST),
-        _op("len__lte", value_type=ValueTypeRule.INT, tier=Tier.FULL, applies_to=_LIST),
-        _op("empty", arity=Arity.BOOL, value_type=ValueTypeRule.BOOL, applies_to=_LIST),
+        _op("len__ne", value_type=ValueTypeRule.INT, tier=Tier.FULL, applies_to=_ARRAY_SHAPED),
+        _op("len__gt", value_type=ValueTypeRule.INT, tier=Tier.FULL, applies_to=_ARRAY_SHAPED),
+        _op("len__gte", value_type=ValueTypeRule.INT, tier=Tier.FULL, applies_to=_ARRAY_SHAPED),
+        _op("len__lt", value_type=ValueTypeRule.INT, tier=Tier.FULL, applies_to=_ARRAY_SHAPED),
+        _op("len__lte", value_type=ValueTypeRule.INT, tier=Tier.FULL, applies_to=_ARRAY_SHAPED),
+        _op("empty", arity=Arity.BOOL, value_type=ValueTypeRule.BOOL, applies_to=_ARRAY_SHAPED),
+        # Map (`dict[str, T]`) key-presence: the value is the *key name*
+        # (always a string, whatever T is), compiled to a `$exists` check on
+        # the dotted path. Available whenever a map field is enabled with a
+        # `Filterable` annotation (design doc 02, free-form maps).
+        _op("has_key", value_type=ValueTypeRule.STR, applies_to=_MAP),
     )
 }
 """The default operator registry: name → :class:`Operator`."""
@@ -178,6 +191,20 @@ _ARRAY_PROFILE = TypeProfile(
 """The single operator profile for ``list[T]``/``set[T]`` fields, whatever
 the element type — array operators are about membership and shape, not the
 element's scalar semantics (design doc 02)."""
+
+_NESTED_ARRAY_PROFILE = TypeProfile(
+    safe=("len__eq", "empty"),
+    full=("len__ne", "len__gt", "len__gte", "len__lt", "len__lte"),
+)
+"""The profile for ``list[NestedModel]`` fields: shape operators only.
+Membership (``has``/``has_any``/``has_all``) compares whole documents, which
+is not expressible through typed query parameters — element-level filtering
+goes through the ``elem`` paths instead (design doc 02)."""
+
+_MAP_PROFILE = TypeProfile(safe=("has_key",), full=())
+"""The profile for ``dict[str, T]`` fields: key presence only. Value-at-key
+parameters come from ``Filterable(keys=[...])`` enumeration, not from an
+operator on the map itself (design doc 02, free-form maps)."""
 
 _NULLABLE_SAFE: tuple[str, ...] = ("isnull",)
 _NULLABLE_FULL: tuple[str, ...] = ("exists",)
@@ -234,15 +261,25 @@ def operators_for(
 
     ``py_type`` is the resolved scalar type — the *element* type when
     ``container`` is ``LIST``, in which case the array profile applies
-    regardless of the element kind. ``NESTED`` (embedding) fields have no
-    operators of their own beyond the nullability pair — filtering happens
-    on their leaf fields. ``full`` includes everything in ``safe``.
-    Nullable fields additionally get ``isnull`` (safe) and ``exists`` (full).
-    Returns ``()`` for unsupported types. The ``regex`` config gate is
-    applied by the caller, not here.
+    regardless of the element kind. ``LIST_OF_NESTED`` fields get the shape
+    operators only, ``MAP`` fields get ``has_key``, and ``NESTED``
+    (embedding) fields have no operators of their own beyond the nullability
+    pair — filtering happens on their leaf fields. ``full`` includes
+    everything in ``safe``. Nullable fields additionally get ``isnull``
+    (safe) and ``exists`` (full). Returns ``()`` for unsupported types. The
+    ``regex`` config gate is applied by the caller, not here.
     """
+    fixed_profiles = {
+        Container.LIST_OF_NESTED: _NESTED_ARRAY_PROFILE,
+        Container.MAP: _MAP_PROFILE,
+    }
     if container is Container.NESTED:
         names: tuple[str, ...] = ()
+    elif container in fixed_profiles:
+        # The profile is fixed by the container shape; the element / value
+        # type was already validated at introspection.
+        tp = fixed_profiles[container]
+        names = tp.safe if profile == "safe" else tp.safe + tp.full
     else:
         kind = type_kind(py_type)
         if kind is None:

@@ -5,7 +5,7 @@ from typing import Annotated, Optional
 import pytest
 from pydantic import BaseModel, ValidationError
 
-from conftest import Address, Curated, Customer, Tagged, User
+from conftest import Address, Curated, Customer, Order, Profile, Shopper, Tagged, User
 from fast_pager import ConfigurationError, FilterConfig, Filterable, ops
 from fast_pager.params import build_plan
 
@@ -629,3 +629,205 @@ def test_sources_map_nested_public_names_to_dotted_sources():
 def test_custom_separator_applies_to_nested_paths():
     names = url_names(build_plan(Customer, FilterConfig(separator="_")))
     assert "address_city_contains" in names and "address__city__contains" not in names
+
+
+# ---------------------------------------------------------------------------
+# Phase 3c: arrays of nested models (`elem`, full tier).
+# ---------------------------------------------------------------------------
+
+FULL = FilterConfig(default_profile="full")
+
+
+def test_elem_params_are_full_tier_gated():
+    safe = url_names(build_plan(Shopper, FilterConfig()))
+    assert not any("__elem__" in n for n in safe)
+    full = url_names(build_plan(Shopper, FULL))
+    assert {
+        "orders__elem__amount__gte",
+        "orders__elem__status",  # bare-eq sugar on element leaves
+        "orders__elem__status__in",
+        "orders__elem__note__isnull",
+        "orders__elem__items__elem__qty__lte",
+    } <= full
+
+
+def test_list_of_nested_field_gets_shape_operators_only():
+    plan = build_plan(Shopper, FilterConfig())
+    assert names_for(plan, "orders") == {"orders__len__eq", "orders__empty"}
+    full = url_names(build_plan(Shopper, FULL))
+    assert "orders__len__gte" in full
+    assert "orders__has" not in full and "orders__has_any" not in full
+    assert "orders" not in full  # no bare-eq sugar for arrays
+
+
+def test_optional_list_of_nested_gets_isnull():
+    names = url_names(build_plan(Shopper, FilterConfig()))
+    assert "past_orders__isnull" in names
+    assert "orders__isnull" not in names
+
+
+def test_config_operators_naming_an_elem_path_is_an_explicit_opt_in():
+    plan = build_plan(Shopper, FilterConfig(operators={"orders__elem__amount": ["gte"]}))
+    assert names_for(plan, "orders__elem__amount") == {"orders__elem__amount__gte"}
+
+
+def test_filterable_ops_on_an_element_field_is_an_explicit_opt_in():
+    class Line(BaseModel):
+        sku: Annotated[str, Filterable(ops=["contains", "eq"])]
+        qty: int
+
+    class Cart(BaseModel):
+        lines: list[Line]
+
+    plan = build_plan(Cart, FilterConfig())  # safe default profile
+    assert names_for(plan, "lines__elem__sku") == {
+        "lines__elem__sku",
+        "lines__elem__sku__eq",
+        "lines__elem__sku__contains",
+    }
+    assert names_for(plan, "lines__elem__qty") == set()  # still elem-gated
+
+
+def test_text_search_never_applies_inside_elements():
+    class Line(BaseModel):
+        sku: Annotated[str, Filterable(ops=ops.ALL)]
+
+    class Cart(BaseModel):
+        lines: list[Line]
+
+    names = url_names(build_plan(Cart, FULL))
+    assert "lines__elem__sku__icontains" in names
+    assert "lines__elem__sku__text_search" not in names
+    with pytest.raises(ConfigurationError, match=r"'text_search'.*'lines__elem__sku'"):
+        build_plan(Cart, FilterConfig(operators={"lines__elem__sku": ["text_search"]}))
+
+
+def test_elem_paths_are_never_sortable():
+    plan = build_plan(Shopper, FULL)
+    assert not any("__elem__" in name for name in plan.sortable)
+    assert "orders" not in plan.sortable  # arrays stay unsortable by default
+    with pytest.raises(ConfigurationError, match=r"'orders__elem__amount'.*never sortable"):
+        build_plan(Shopper, FilterConfig(sortable=["orders__elem__amount"]))
+
+
+def test_filterable_sortable_true_is_ignored_for_elem_uses():
+    class Line(BaseModel):
+        sku: Annotated[str, Filterable(sortable=True)]
+
+    class Cart(BaseModel):
+        lines: list[Line]
+
+    assert build_plan(Cart, FULL).sortable == frozenset()
+
+
+def test_ops_none_on_the_array_field_removes_the_subtree():
+    class Cart(BaseModel):
+        name: str
+        orders: Annotated[list[Order], Filterable(ops=ops.NONE)]
+
+    plan = build_plan(Cart, FULL)
+    assert not any(n == "orders" or n.startswith("orders__") for n in url_names(plan))
+
+
+def test_exclude_the_array_field_or_a_single_elem_leaf():
+    plan = build_plan(Shopper, FilterConfig(default_profile="full", exclude=["orders"]))
+    assert not any(n.startswith("orders__") for n in url_names(plan))
+    leaf = build_plan(
+        Shopper, FilterConfig(default_profile="full", exclude=["orders__elem__amount"])
+    )
+    names = url_names(leaf)
+    assert "orders__elem__amount__gte" not in names
+    assert "orders__elem__status" in names  # siblings untouched
+
+
+def test_invalid_operator_on_the_array_field_names_the_list_type():
+    with pytest.raises(
+        ConfigurationError,
+        match=r"operator 'has' is not valid for field 'orders' of type "
+        r"list of nested model Order.*valid operators for list of nested model Order: len__eq",
+    ):
+        build_plan(Shopper, FilterConfig(operators={"orders": ["has"]}))
+
+
+def test_elem_params_coerce_to_the_element_field_types():
+    plan = build_plan(Shopper, FULL)
+    parsed = plan.params_model.model_validate(
+        {"orders__elem__amount__gte": "10.5", "orders__elem__status": "paid"}
+    )
+    assert parsed.f_orders__elem__amount__gte == 10.5
+    assert parsed.f_orders__elem__status == "paid"
+    with pytest.raises(ValidationError):
+        plan.params_model.model_validate({"orders__elem__status": "shipped"})
+
+
+# ---------------------------------------------------------------------------
+# Phase 3c: dict[str, T] maps (`has_key` + enumerated value-at-key params).
+# ---------------------------------------------------------------------------
+
+
+def test_map_fields_generate_has_key_and_enumerated_key_params():
+    plan = build_plan(Profile, FilterConfig())
+    assert names_for(plan, "metadata") == {
+        "metadata__has_key",
+        "metadata__region",
+        "metadata__region__eq",
+        "metadata__tier",
+        "metadata__tier__eq",
+    }
+    assert names_for(plan, "counters") == {"counters__has_key"}
+    assert not any(n.startswith("attrs") for n in url_names(plan))  # gated off
+
+
+def test_value_at_key_params_are_eq_only_even_under_full():
+    names = url_names(build_plan(Profile, FULL))
+    assert "metadata__region__contains" not in names
+    assert "metadata__region__in" not in names
+    with pytest.raises(
+        ConfigurationError,
+        match=r"operator 'contains' is not valid for field 'metadata__region' of "
+        r"type map value str.*valid operators for map value str: eq",
+    ):
+        build_plan(Profile, FilterConfig(operators={"metadata__region": ["contains"]}))
+
+
+def test_value_at_key_params_coerce_to_the_value_type():
+    class M(BaseModel):
+        counters: Annotated[dict[str, int], Filterable(keys=["visits"])]
+
+    plan = build_plan(M, FilterConfig())
+    assert plan.params_model.model_validate({"counters__visits": "3"}).f_counters__visits == 3
+    with pytest.raises(ValidationError):
+        plan.params_model.model_validate({"counters__visits": "many"})
+
+
+@pytest.mark.parametrize("key", ["", "a.b", "a$b", "$where", "a\x00b"])
+def test_has_key_values_with_path_metacharacters_are_rejected(key):
+    plan = build_plan(Profile, FilterConfig())
+    with pytest.raises(ValidationError, match="must not contain"):
+        plan.params_model.model_validate({"metadata__has_key": key})
+    assert (
+        plan.params_model.model_validate({"metadata__has_key": "region"}).f_metadata__has_key
+        == "region"
+    )
+
+
+def test_has_key_validator_passes_none_through():
+    plan = build_plan(Profile, FilterConfig())
+    parsed = plan.params_model.model_validate({"metadata__has_key": None})
+    assert parsed.f_metadata__has_key is None
+
+
+def test_map_fields_are_not_sortable_by_default_but_key_paths_may_opt_in():
+    plan = build_plan(Profile, FilterConfig())
+    assert plan.sortable == frozenset({"name"})
+    allowed = build_plan(Profile, FilterConfig(sortable=["metadata__region"]))
+    assert allowed.sortable == frozenset({"metadata__region"})
+    assert allowed.sources["metadata__region"] == "metadata.region"
+
+
+def test_map_ops_curation_and_optional_map_isnull():
+    class M(BaseModel):
+        meta: Annotated[Optional[dict[str, str]], Filterable(ops=["isnull"])] = None
+
+    plan = build_plan(M, FilterConfig())
+    assert names_for(plan, "meta") == {"meta__isnull"}

@@ -14,6 +14,16 @@ alike — this module imports no database driver. Safety guarantees:
   missing, null, or non-array value is treated as length 0 instead of a
   query execution error. ``$expr`` clauses never merge — each stands alone
   (``$expr`` takes a single expression).
+- ``elem`` conditions (source paths carrying the ``$elem`` marker, from
+  ``list[NestedModel]`` fields) on the **same array field in the same AND
+  group compile into a single ``$elemMatch``** — that grouping is the whole
+  point of ``elem``: the conditions must hold for the *same* element. Keys
+  inside ``$elemMatch`` are relative to the element. Distinct array fields
+  each get their own ``$elemMatch``; nested ``elem`` hops nest recursively.
+- ``has_key`` inserts its (request-supplied) key into a field path, so the
+  compiler re-checks the key for ``.``/``$``/null bytes and raises
+  :class:`~fast_pager.errors.CompilationError` on violation — defense in
+  depth behind the parameter-level 422 validator.
 """
 
 from __future__ import annotations
@@ -22,10 +32,14 @@ import enum
 import re
 from typing import Any
 
-from ..ast import Condition, Group, Page, Sort
+from ..ast import ELEM_SOURCE_MARKER, Condition, Group, Page, Sort
 from ..errors import CompilationError
 
 __all__ = ["MongoCompiler"]
+
+#: An `elem` boundary inside a dotted source path: "orders.$elem.amount"
+#: splits into the array field "orders" and the element-relative "amount".
+_ELEM = f".{ELEM_SOURCE_MARKER}."
 
 
 def _norm(value: Any) -> Any:
@@ -73,6 +87,7 @@ class MongoCompiler:
             "len__lt",
             "len__lte",
             "empty",
+            "has_key",
         }
     )
 
@@ -80,15 +95,26 @@ class MongoCompiler:
         """Compile a filter group into a Mongo query dict.
 
         AND groups merge same-field conditions into one sub-document; OR
-        groups compile to ``$or``. Nested groups recurse.
+        groups compile to ``$or``. Nested groups recurse. All `elem`
+        conditions on the same array field within one AND group compile into
+        a **single** ``$elemMatch`` on that field — same-element semantics.
         """
         if group.op == "or":
             return {"$or": [self._compile_member(m) for m in group.members]}
         merged: dict[str, dict[str, Any]] = {}
         extras: list[dict[str, Any]] = []
+        elem_groups: dict[str, list[Condition]] = {}
         for member in group.members:
             if isinstance(member, Group):
                 extras.append(self.compile_where(member))
+                continue
+            if _ELEM in member.field:
+                # Collect element-relative conditions per array field; each
+                # array compiles to one $elemMatch below.
+                array_field, rest = member.field.split(_ELEM, 1)
+                elem_groups.setdefault(array_field, []).append(
+                    Condition(field=rest, op=member.op, value=member.value)
+                )
                 continue
             key, fragment = self._fragment(member)
             if key == "$expr":
@@ -103,6 +129,14 @@ class MongoCompiler:
                 extras.append({key: self._finalize(fragment)})
             else:
                 bucket.update(fragment)
+        for array_field, conds in elem_groups.items():
+            # Keys inside $elemMatch are relative to the element; nested
+            # elem hops (rest still carrying the marker) recurse naturally.
+            inner = self.compile_where(Group(op="and", members=tuple(conds)))
+            # $elemMatch merges with same-field shape conditions
+            # ({"orders": {"$size": 2, "$elemMatch": {...}}}); one group per
+            # array field means the key can never already be taken.
+            merged.setdefault(array_field, {})["$elemMatch"] = inner
         result = {field: self._finalize(ops) for field, ops in merged.items() if ops}
         if extras:
             clauses = ([result] if result else []) + extras
@@ -120,6 +154,13 @@ class MongoCompiler:
     def _compile_member(self, member: Condition | Group) -> dict[str, Any]:
         if isinstance(member, Group):
             return self.compile_where(member)
+        if _ELEM in member.field:
+            # A lone elem condition (e.g. inside an OR group): a one-member
+            # $elemMatch. Same-element grouping only ever applies within one
+            # AND group.
+            array_field, rest = member.field.split(_ELEM, 1)
+            inner = self._compile_member(Condition(field=rest, op=member.op, value=member.value))
+            return {array_field: {"$elemMatch": inner}}
         key, fragment = self._fragment(member)
         return {key: self._finalize(fragment)}
 
@@ -165,6 +206,17 @@ class MongoCompiler:
             # of failing the whole query at execution time.
             length = {"$size": {"$cond": [{"$isArray": f"${field}"}, f"${field}", []]}}
             return "$expr", {f"${op.removeprefix('len__')}": [length, value]}
+        if op == "has_key":
+            # Key presence on a map field: the *value* is the key name and
+            # becomes a path segment. The params layer already 422s unsafe
+            # keys; re-check here so direct AST users get the same guarantee.
+            key = str(value)
+            if not key or "." in key or "$" in key or "\x00" in key:
+                raise CompilationError(
+                    f"unsafe map key {key!r} for has_key on field {field!r}: keys must "
+                    "be non-empty and must not contain '.', '$', or null bytes"
+                )
+            return f"{field}.{key}", {"$exists": True}
         if op == "empty":
             # Pinned semantics (design doc 02): `true` matches the empty
             # array, `false` matches at least one element; a missing field

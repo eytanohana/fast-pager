@@ -84,6 +84,38 @@ class Customer(BaseModel):
     billing: Optional[Address] = None
 
 
+class Item(BaseModel):
+    sku: str
+    qty: int
+
+
+class Order(BaseModel):
+    """An array element model: scalars, a renamed source, and a nested array."""
+
+    amount: float
+    status: Literal["paid", "refunded"]
+    ref: Annotated[str, Filterable(source="reference")]
+    items: list[Item]
+    note: Optional[str] = None
+
+
+class Shopper(BaseModel):
+    """The Phase 3c array workhorse: arrays of nested models."""
+
+    name: str
+    orders: list[Order]
+    past_orders: Optional[list[Order]] = None
+
+
+class Profile(BaseModel):
+    """The Phase 3c map workhorse: dict fields in every supported shape."""
+
+    name: str
+    metadata: Annotated[dict[str, str], Filterable(keys=["region", "tier"])]
+    counters: Annotated[dict[str, int], Filterable()]
+    attrs: dict[str, str]  # no Filterable: maps are not filterable by default
+
+
 @pytest.fixture(autouse=True)
 def _clear_plan_cache():
     """Isolate the per-(model, config) plan cache between tests."""
