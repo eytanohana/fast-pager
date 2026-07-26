@@ -228,8 +228,25 @@ also refunded"). Mongo expresses this with `$elemMatch`. We expose it explicitly
 The `elem` token groups conditions that must hold for the *same* array element,
 compiling to a single `$elemMatch`. Without `elem`, conditions on different
 parameters are independent (Mongo's default array-matching semantics) — we
-document this difference loudly because it surprises people. v1 may ship
-`elem` as `full`-tier given the subtlety.
+document this difference loudly because it surprises people.
+
+`elem` parameters are **`full`-tier** (shipped that way given the subtlety):
+under the default `safe` profile they generate nothing, and there are exactly
+three opt-in paths — `FilterConfig(default_profile="full")`, a
+`Filterable(ops=...)` on the element field, or a `FilterConfig.operators`
+entry naming the elem path. `text_search` never applies inside elements.
+Shape operators (`len__*`, `empty`) remain available on the array field
+itself and merge with `$elemMatch` on the same field. Elem paths are never
+sortable. The `elem` hop counts as **one** `max_depth` boundary, like an
+embedding.
+
+**Adapter contract:** in the AST, element-relative fields carry a literal
+`$elem` source segment (`orders.$elem.amount` — `$`-prefixed, so it cannot
+collide with a real Mongo field name; exported as
+`fast_pager.ast.ELEM_SOURCE_MARKER`). Backends group all conditions sharing
+the prefix before `.$elem.` into one element-match construct with keys
+relative to the element. The conformance suite (doc 04) exercises this
+grouping rule.
 
 ### `dict[str, T]` / free-form maps
 
@@ -245,10 +262,17 @@ unknown. So support is deliberately narrow:
   metadata: Annotated[dict[str, str], Filterable(keys=["region", "tier"])]
   ```
 
-  generates `metadata__region`, `metadata__tier` (typed as `T`), and nothing
-  else. No enumeration → no value filtering; we do not accept arbitrary
-  `metadata__<anything>` at request time, because those params would be
-  undocumented and untyped.
+  generates `metadata__region`, `metadata__tier` (typed as `T`, **implicit
+  `eq` only** in this release), and nothing else. No enumeration → no value
+  filtering; we do not accept arbitrary `metadata__<anything>` at request
+  time, because those params would be undocumented and untyped. Richer
+  per-key operator curation is deferred to `FilterSet`.
+
+Because a map key becomes part of a Mongo field path, keys are
+**sanitized**: empty keys and keys containing `.`, `$`, or NUL are rejected —
+at `Filterable(keys=...)` construction time (`ConfigurationError`), at
+request time for `has_key` values (standard 422), and again in the compiler
+(`CompilationError`, defense in depth for direct AST users).
 
 Default: **not filterable** unless explicitly enabled.
 
