@@ -905,6 +905,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#012-stage-3-checkpoint-nested-models" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        <code>0.1.2</code> — Stage 3 checkpoint: nested models
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#011-stage-3-checkpoint-arrays-of-scalars" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -1019,6 +1030,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#012-stage-3-checkpoint-nested-models" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        <code>0.1.2</code> — Stage 3 checkpoint: nested models
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#011-stage-3-checkpoint-arrays-of-scalars" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -1108,6 +1130,29 @@ unstable API, and breaking changes bump the minor version and are called out
 below. See the <a href="../design/05-roadmap-and-release/">Roadmap</a> for what's coming
 next, and the <a href="https://github.com/eytanohana/fast-pager/blob/main/DEVELOPMENT_PLAN.md">development plan</a>
 for the execution detail behind each stage.</p>
+<h2 id="012-stage-3-checkpoint-nested-models"><code>0.1.2</code> — Stage 3 checkpoint: nested models<a class="headerlink" href="#012-stage-3-checkpoint-nested-models" title="Permanent link">&para;</a></h2>
+<p>Nested Pydantic models (embedded documents) are now filterable by <strong>dotted
+path</strong>: introspection recurses into a field whose type is another model, so
+<code>?address__city__contains=ams</code> compiles to <code>{"address.city": {"$regex":
+"ams"}}</code> — and everything shipped for flat fields carries over to nested
+leaves unchanged (scalar operators, the array family for a nested
+<code>list[T]</code>, <code>Filterable(...)</code>, <code>type_profiles</code>, bare-<code>eq</code> sugar, sorting by
+public name, <code>FilterConfig</code> keys in the dotted-param spelling
+<code>"address__city"</code>). Recursion is <strong>depth-bounded</strong> by the new
+<code>FilterConfig(max_depth=...)</code> knob (default 2 embedded-model levels below
+the root; deeper fields are silently skipped), which keeps the parameter
+surface finite and makes self-referential models safe by construction. The
+embedding field itself exposes no operators — except <code>isnull</code>/<code>exists</code> on
+an <code>Optional</code> embedding — and a whole subtree opts out with
+<code>Filterable(ops=ops.NONE)</code> on the embedding field or
+<code>FilterConfig(exclude=["address"])</code>. Generated-name collisions (a literal
+<code>address__city</code> field vs. a nested <code>address.city</code> path) raise a
+<code>ConfigurationError</code> at registration naming both sources. <code>list[NestedModel]</code>
+and <code>dict</code> stay unfilterable until <code>v0.1.3</code>. Strictly additive: no behavior
+changes to anything shipped in <code>0.1.1</code>. See the new
+<a href="../reference/operators/#nested-pydantic-models-embedded-documents">nested-models section in the Operator Reference</a>
+and the <a href="../tutorial/filtering/#nested-models">nested-models section of the filtering tutorial</a>.
+100% test coverage, <code>mypy --strict</code> clean.</p>
 <h2 id="011-stage-3-checkpoint-arrays-of-scalars"><code>0.1.1</code> — Stage 3 checkpoint: arrays of scalars<a class="headerlink" href="#011-stage-3-checkpoint-arrays-of-scalars" title="Permanent link">&para;</a></h2>
 <p><code>list[T]</code> and <code>set[T]</code> fields (any supported scalar element type, including
 <code>Optional[list[T]]</code>) are now filterable with their own <strong>membership and
@@ -1164,8 +1209,7 @@ the repository has CI + fully automated release tooling
 but <strong>no library functionality yet</strong>. Nothing in this documentation site is
 installable against <code>0.0.1</code> — see <a href="../getting-started/">Getting Started</a>.</p>
 <h2 id="coming-next">Coming next<a class="headerlink" href="#coming-next" title="Permanent link">&para;</a></h2>
-<p>The rest of Stage 3, in strictly additive checkpoint releases: nested
-Pydantic models via dotted paths (<code>address__city__contains</code>) in <strong><code>v0.1.2</code></strong>;
+<p>The rest of Stage 3, in strictly additive checkpoint releases:
 <code>list[NestedModel]</code> element matching via <code>elem</code> → <code>$elemMatch</code> and <code>dict</code>
 fields with enumerated keys in <strong><code>v0.1.3</code></strong>; and the <code>FilterSet</code> class
 (allow-list <code>fields</code> mapping, multiple filter surfaces per model, custom

@@ -454,6 +454,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#nested-models" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Nested models
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#safety-by-default" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -1067,6 +1078,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#nested-models" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Nested models
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#safety-by-default" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -1207,6 +1229,60 @@ to the element type, and the same <code>max_list_length</code> guard that protec
 <code>empty</code> distinguishes <em>empty</em> from <em>missing</em> — a missing field matches
 neither <code>empty=true</code> nor <code>empty=false</code> — and array fields are <strong>not
 sortable by default</strong> (opt in per field with <code>Filterable(sortable=True)</code>).</p>
+<h2 id="nested-models">Nested models<a class="headerlink" href="#nested-models" title="Permanent link">&para;</a></h2>
+<p>Fields whose type is another Pydantic model are filterable by <strong>dotted
+path</strong>: the public parameter joins the segments with <code>__</code>, the compiled
+query uses Mongo dot notation.</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="k">class</span><span class="w"> </span><span class="nc">Geo</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+</span><span id="__span-8-2"><a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>    <span class="n">lat</span><span class="p">:</span> <span class="nb">float</span>
+</span><span id="__span-8-3"><a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>    <span class="n">lon</span><span class="p">:</span> <span class="nb">float</span>
+</span><span id="__span-8-4"><a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>
+</span><span id="__span-8-5"><a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a><span class="k">class</span><span class="w"> </span><span class="nc">Address</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+</span><span id="__span-8-6"><a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a>    <span class="n">city</span><span class="p">:</span> <span class="nb">str</span>
+</span><span id="__span-8-7"><a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a>    <span class="n">tags</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
+</span><span id="__span-8-8"><a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a>    <span class="n">geo</span><span class="p">:</span> <span class="n">Geo</span>
+</span><span id="__span-8-9"><a id="__codelineno-8-9" name="__codelineno-8-9" href="#__codelineno-8-9"></a>
+</span><span id="__span-8-10"><a id="__codelineno-8-10" name="__codelineno-8-10" href="#__codelineno-8-10"></a><span class="k">class</span><span class="w"> </span><span class="nc">User</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+</span><span id="__span-8-11"><a id="__codelineno-8-11" name="__codelineno-8-11" href="#__codelineno-8-11"></a>    <span class="n">name</span><span class="p">:</span> <span class="nb">str</span>
+</span><span id="__span-8-12"><a id="__codelineno-8-12" name="__codelineno-8-12" href="#__codelineno-8-12"></a>    <span class="n">address</span><span class="p">:</span> <span class="n">Address</span>
+</span><span id="__span-8-13"><a id="__codelineno-8-13" name="__codelineno-8-13" href="#__codelineno-8-13"></a>    <span class="n">billing</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Address</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+</span></code></pre></div>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-9-1"><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>?address__city__contains=ams        # nested string field
+</span><span id="__span-9-2"><a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>?address__city=Amsterdam            # bare eq works on nested leaves too
+</span><span id="__span-9-3"><a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>?address__tags__has=home            # nested arrays get the array family
+</span><span id="__span-9-4"><a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a>?address__geo__lat__gte=52          # two levels deep
+</span><span id="__span-9-5"><a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a>?billing__isnull=true               # Optional embedding: presence check
+</span><span id="__span-9-6"><a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a>?sort=-address__city                # nested leaves sort by public name
+</span></code></pre></div>
+<p>A request like <code>?address__geo__lat__gte=52&amp;address__geo__lat__lt=53</code>
+compiles to one merged sub-document, exactly like a flat field:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-10-1"><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="p">{</span><span class="s2">&quot;address.geo.lat&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;$gte&quot;</span><span class="p">:</span> <span class="mf">52.0</span><span class="p">,</span> <span class="s2">&quot;$lt&quot;</span><span class="p">:</span> <span class="mf">53.0</span><span class="p">}}</span>
+</span></code></pre></div>
+<p>Everything you know from flat fields carries over: nested scalars get their
+type's operators (and <code>type_profiles</code> overrides), nested <code>list[T]</code> fields
+get the array family, <code>Filterable(...)</code> on a nested field works unchanged,
+and <code>source=</code>/<code>param=</code>/aliases rename <em>their own segment</em> of the dotted
+path. <code>FilterConfig</code> keys use the public dotted spelling —
+<code>operators={"address__city": ["contains"]}</code>, <code>exclude=["address__city"]</code>,
+<code>sortable=["address__city"]</code>.</p>
+<p>Three things are specific to nesting:</p>
+<ul>
+<li><strong>Depth bound.</strong> Generation descends <code>FilterConfig(max_depth=...)</code>
+  embedded-model levels below the root (default <strong>2</strong>). Deeper fields are
+  silently skipped — this keeps the parameter surface and your OpenAPI docs
+  finite, and it is also what makes self-referential models safe.</li>
+<li><strong>The embedding field itself.</strong> <code>?address=</code> doesn't exist — you filter
+  the leaves, not the subdocument. The exception: an <code>Optional</code> embedding
+  exposes <code>isnull</code>/<code>exists</code>, because "has no billing address" is a real
+  question. Children of a nullable embedding behave normally (a condition
+  on <code>billing__city</code> simply matches nothing when <code>billing</code> is null).</li>
+<li><strong>Excluding a subtree.</strong> <code>Filterable(ops=ops.NONE)</code> on the embedding
+  field removes the whole subtree from the filter surface, as does
+  <code>FilterConfig(exclude=["billing"])</code> at the route level.</li>
+</ul>
+<p>Full rules — segment naming, collision detection, embedding-field
+<code>Filterable</code> semantics — are in the
+<a href="../../reference/operators/#nested-pydantic-models-embedded-documents">Operator Reference</a>.</p>
 <h2 id="safety-by-default">Safety by default<a class="headerlink" href="#safety-by-default" title="Permanent link">&para;</a></h2>
 <p>Some operators are gated because they're expensive or dangerous on an
 unindexed collection:</p>

@@ -582,6 +582,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#nested-pydantic-models-embedded-documents" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Nested Pydantic models (embedded documents)
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#operator-semantics" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -1045,6 +1056,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#nested-pydantic-models-embedded-documents" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Nested Pydantic models (embedded documents)
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#operator-semantics" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -1086,14 +1108,14 @@
 
 <h1 id="operator-reference">Operator Reference<a class="headerlink" href="#operator-reference" title="Permanent link">&para;</a></h1>
 <div class="admonition note">
-<p class="admonition-title">Scalars and arrays of scalars (for now)</p>
-<p>The current release supports the <strong>scalar types</strong> below and <strong>arrays of
-scalars</strong> (<code>list[T]</code> / <code>set[T]</code>). The remaining compound types are
-designed (see
+<p class="admonition-title">Scalars, arrays of scalars, and nested models (for now)</p>
+<p>The current release supports the <strong>scalar types</strong> below, <strong>arrays of
+scalars</strong> (<code>list[T]</code> / <code>set[T]</code>), and <strong>nested Pydantic models</strong> via
+dotted paths. The remaining compound types are designed (see
 <a href="../../design/02-type-and-operator-system/">design doc 02</a>) and land in
-phased releases: nested Pydantic models in <strong><code>v0.1.2</code></strong>, arrays of
-nested models and <code>dict[str, T]</code> keys in <strong><code>v0.1.3</code></strong>, and <code>FilterSet</code>
-in <strong><code>v0.2.0</code></strong>. This page grows a table per type as each ships.</p>
+phased releases: arrays of nested models and <code>dict[str, T]</code> keys in
+<strong><code>v0.1.3</code></strong>, and <code>FilterSet</code> in <strong><code>v0.2.0</code></strong>. This page grows a table
+per type as each ships.</p>
 </div>
 <p>Every operator set below is the <em>default</em> for its type — the <strong><code>safe</code></strong>
 profile. Operators listed under <strong><code>full</code></strong> are additional operators
@@ -1274,6 +1296,79 @@ expose exactly this family, whatever the element type:</p>
 parameter is pre-generated with its exact name at registration, so the full
 spelling is simply matched as-is (see the
 <a href="../../tutorial/filtering/#the-field__op-convention">filtering tutorial</a>).</p>
+<h2 id="nested-pydantic-models-embedded-documents">Nested Pydantic models (embedded documents)<a class="headerlink" href="#nested-pydantic-models-embedded-documents" title="Permanent link">&para;</a></h2>
+<p>A field whose type is another Pydantic model is walked recursively, and every
+supported field inside it becomes filterable by <strong>dotted path</strong> — public
+parameter names join the segments with the separator, compiled queries use
+Mongo dot notation:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="k">class</span><span class="w"> </span><span class="nc">Geo</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>    <span class="n">lat</span><span class="p">:</span> <span class="nb">float</span>
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>    <span class="n">lon</span><span class="p">:</span> <span class="nb">float</span>
+</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>
+</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="k">class</span><span class="w"> </span><span class="nc">Address</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>    <span class="n">city</span><span class="p">:</span> <span class="nb">str</span>
+</span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>    <span class="n">tags</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
+</span><span id="__span-0-8"><a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>    <span class="n">geo</span><span class="p">:</span> <span class="n">Geo</span>
+</span><span id="__span-0-9"><a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>
+</span><span id="__span-0-10"><a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a><span class="k">class</span><span class="w"> </span><span class="nc">User</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+</span><span id="__span-0-11"><a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>    <span class="n">name</span><span class="p">:</span> <span class="nb">str</span>
+</span><span id="__span-0-12"><a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>    <span class="n">address</span><span class="p">:</span> <span class="n">Address</span>
+</span><span id="__span-0-13"><a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>    <span class="n">billing</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Address</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+</span></code></pre></div>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>?address__city__contains=ams        # {&quot;address.city&quot;: {&quot;$regex&quot;: &quot;ams&quot;}}
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>?address__geo__lat__gte=52          # {&quot;address.geo.lat&quot;: {&quot;$gte&quot;: 52.0}}
+</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>?address__city=Amsterdam            # bare eq works on nested leaves too
+</span></code></pre></div>
+<p>The rules, precisely:</p>
+<ul>
+<li><strong>Fields inside a nested model get their full normal treatment.</strong> A nested
+  scalar exposes its type's scalar operators (including per-type
+  <code>type_profiles</code> overrides), a nested <code>list[T]</code> exposes the
+  <a href="#arrays-of-scalars-listt-sett">array family</a> (<code>address__tags__has=home</code>),
+  and <code>Filterable(ops=... / source=... / param=... / sortable=...)</code> on a
+  nested field works exactly as at top level.</li>
+<li><strong><code>source</code> / <code>param</code> / aliases compose per segment.</strong> Each path segment
+  resolves its two names independently
+  (<code>param</code> → alias → field name for the URL; <code>source</code> → alias → field name
+  for the database), so <code>Filterable(source="zip")</code> on <code>Address.zip_code</code>
+  yields <code>?address__zip_code=...</code> → <code>{"address.zip": ...}</code>, and a rename on
+  the <em>embedding</em> field renames that segment for the whole subtree.</li>
+<li><strong>The embedding field itself has no operators of its own</strong> — no bare
+  <code>?address=</code> parameter exists — with one exception: an <strong><code>Optional</code>
+  embedding</strong> exposes <code>isnull</code> (<code>safe</code>) and <code>exists</code> (<code>full</code>), so
+  <code>?billing__isnull=true</code> finds documents without a billing address. The
+  children of a nullable embedding are generated normally; note that when
+  the parent is <code>null</code>, a condition on a child simply matches nothing —
+  combine with <code>billing__isnull=false</code> when presence matters.</li>
+<li><strong>Depth is bounded</strong> by <code>FilterConfig(max_depth=...)</code>, default <strong>2</strong>: a
+  field's path may cross at most <code>max_depth</code> embedded-model boundaries.
+  <code>address__city</code> (1) and <code>address__geo__lat</code> (2) are generated; anything
+  deeper is silently skipped. A nested model sitting exactly at the bound
+  keeps its own <code>isnull</code>/<code>exists</code> (when nullable) but none of its children.
+  The bound is what keeps the parameter surface finite — and it is also the
+  cycle guard: self-referential or mutually-recursive models simply truncate
+  at the bound.</li>
+<li><strong>Subtree opt-out:</strong> <code>Filterable(ops=ops.NONE)</code> on the embedding field
+  removes the field <em>and every descendant</em> from the filter surface. Other
+  <code>Filterable</code> options on an embedding field never touch the children —
+  <code>ops=[...]</code> is validated against the embedding's own operator set
+  (<code>isnull</code>/<code>exists</code> when nullable, nothing otherwise). Route-level,
+  <code>FilterConfig(exclude=["billing"])</code> excludes the subtree, and
+  <code>exclude=["address__city"]</code> a single nested field.</li>
+<li><strong>Config keys use the public dotted-param spelling</strong>:
+  <code>FilterConfig(operators={"address__city": ["contains"]})</code>,
+  <code>sortable=["address__city"]</code>, <code>exclude=["address__city"]</code>.</li>
+<li><strong>Nested leaves sort by their public name</strong> — <code>?sort=-address__city</code>
+  compiles to the dotted source <code>address.city</code>. Scalar leaves are sortable
+  by default (sortable-iff-filterable, as at top level); embedding fields
+  and nested arrays are not.</li>
+<li><strong>Name collisions are impossible to mis-parse and loud to misconfigure</strong>:
+  because matching is exact, a literal field named <code>address__city</code> and a
+  nested <code>address.city</code> path that generate the same parameter name raise a
+  <code>ConfigurationError</code> at registration naming both sources.</li>
+<li><code>list[NestedModel]</code> element matching (<code>elem</code> → <code>$elemMatch</code>) ships in
+  <code>v0.1.3</code>.</li>
+</ul>
 <h2 id="operator-semantics">Operator semantics<a class="headerlink" href="#operator-semantics" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
