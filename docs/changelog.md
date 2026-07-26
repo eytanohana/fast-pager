@@ -10,6 +10,24 @@ below. See the [Roadmap](design/05-roadmap-and-release.md) for what's coming
 next, and the [development plan](https://github.com/eytanohana/fast-pager/blob/main/DEVELOPMENT_PLAN.md)
 for the execution detail behind each stage.
 
+## `0.1.1` — Stage 3 checkpoint: arrays of scalars
+
+`list[T]` and `set[T]` fields (any supported scalar element type, including
+`Optional[list[T]]`) are now filterable with their own **membership and
+shape** operator family: `has`, `has_any`, `has_all`, `len__eq` and the
+`empty` operator in the `safe` tier, plus the `len__ne`/`len__gt`/`len__gte`/
+`len__lt`/`len__lte` comparisons in the `full` tier (they compile to `$expr`
+over `$size`, which can't use an index). The `empty` operator pins down the
+classic empty-vs-missing Mongo trap — a missing field matches neither
+`empty=true` nor `empty=false` — and array fields deliberately get **no
+scalar operators** (`tags__contains` doesn't exist) and are **not sortable
+by default** (`Filterable(sortable=True)` opts in). `max_list_length`
+guards `has_any`/`has_all` exactly as it does `in`/`nin`. Strictly additive:
+no behavior changes to anything shipped in `0.1.0`. See the new
+[array tables in the Operator Reference](reference/operators.md#arrays-of-scalars-listt-sett)
+and the [arrays section of the filtering tutorial](tutorial/filtering.md#array-fields).
+100% test coverage, `mypy --strict` clean.
+
 ## `0.1.0` — first minor release: Stages 1–2 finalized
 
 Stages 1–2 are complete and consolidated: the core filter → sort → paginate
@@ -58,11 +76,12 @@ the repository has CI + fully automated release tooling
 but **no library functionality yet**. Nothing in this documentation site is
 installable against `0.0.1` — see [Getting Started](getting-started.md).
 
-## Coming in `v0.2.0`
+## Coming next
 
-Stage 3: the `FilterSet` class (allow-list `fields` mapping, multiple filter
-surfaces per model, custom declared filters) and compound types —
-`list[scalar]` (`has`, `has_any`, `has_all`, `len__*`, `empty`), nested
-models via dotted paths, `dict` with enumerated keys, and `list[Nested]`
-element matching via `elem` → `$elemMatch`. Tracked in
+The rest of Stage 3, in strictly additive checkpoint releases: nested
+Pydantic models via dotted paths (`address__city__contains`) in **`v0.1.2`**;
+`list[NestedModel]` element matching via `elem` → `$elemMatch` and `dict`
+fields with enumerated keys in **`v0.1.3`**; and the `FilterSet` class
+(allow-list `fields` mapping, multiple filter surfaces per model, custom
+declared filters) capping the stage in **`v0.2.0`**. Tracked in
 [design doc 05 — Roadmap & Release Plan](design/05-roadmap-and-release.md).

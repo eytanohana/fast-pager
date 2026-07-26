@@ -97,6 +97,44 @@ List-valued operators (`in`, `nin`) accept **both** comma-joined values and
 repeated keys, and each element is coerced to the field's type — so
 `age__in=abc` still returns a clean `422`, the same as any other bad value.
 
+## Array fields
+
+`list[T]` and `set[T]` fields (any supported scalar element type) get their
+own operator family, about **membership and shape**:
+
+```python
+class User(BaseModel):
+    name: str
+    tags: list[str]
+```
+
+```text
+?tags__has=python                   # array contains this element
+?tags__has_any=python,rust          # any-of (comma-joined or repeated keys)
+?tags__has_all=python,rust          # all-of
+?tags__len__eq=3                    # array length
+?tags__len__gte=2                   # length comparisons (full tier, opt-in)
+?tags__empty=false                  # non-empty array
+```
+
+`?tags__has=python&tags__len__eq=3` compiles to:
+
+```python
+{"tags": {"$eq": "python", "$size": 3}}
+```
+
+Array fields deliberately do **not** get the element type's scalar
+operators — `tags__contains` would be ambiguous (substring of an element,
+or membership?), so it simply doesn't exist. Each `has_*` value is coerced
+to the element type, and the same `max_list_length` guard that protects
+`in`/`nin` caps `has_any`/`has_all`.
+
+Two Mongo traps are pinned down for you (details in the
+[Operator Reference](../reference/operators.md#arrays-of-scalars-listt-sett)):
+`empty` distinguishes *empty* from *missing* — a missing field matches
+neither `empty=true` nor `empty=false` — and array fields are **not
+sortable by default** (opt in per field with `Filterable(sortable=True)`).
+
 ## Safety by default
 
 Some operators are gated because they're expensive or dangerous on an

@@ -32,9 +32,11 @@ q.sort_mongo()
 ```
 
 Only fields marked **sortable** are accepted — by default, the same set of
-fields that are filterable. Sorting on a field outside that allow-list is
-rejected, which prevents an endpoint from accidentally allowing sorts on
-unindexed fields.
+fields that are filterable, except array (`list[T]` / `set[T]`) fields,
+which are never sortable unless opted in (sorting on a Mongo array uses
+min/max element semantics, which surprises people). Sorting on a field
+outside that allow-list is rejected, which prevents an endpoint from
+accidentally allowing sorts on unindexed fields.
 
 ## Pagination
 

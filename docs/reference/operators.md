@@ -4,13 +4,14 @@ icon: lucide/table
 
 # Operator Reference
 
-!!! note "Scalar types only (for now)"
-    The current release supports the **scalar types** below. Compound types —
-    `list[T]`, nested Pydantic models, `dict[str, T]` and arrays of nested
-    models — are designed (see
-    [design doc 02](../design/02-type-and-operator-system.md)) but land in
-    **`v0.2.0`** together with `FilterSet`. This page tracks the scalar
-    tables only; it will grow compound-type tables once those ship.
+!!! note "Scalars and arrays of scalars (for now)"
+    The current release supports the **scalar types** below and **arrays of
+    scalars** (`list[T]` / `set[T]`). The remaining compound types are
+    designed (see
+    [design doc 02](../design/02-type-and-operator-system.md)) and land in
+    phased releases: nested Pydantic models in **`v0.1.2`**, arrays of
+    nested models and `dict[str, T]` keys in **`v0.1.3`**, and `FilterSet`
+    in **`v0.2.0`**. This page grows a table per type as each ships.
 
 Every operator set below is the *default* for its type — the **`safe`**
 profile. Operators listed under **`full`** are additional operators
@@ -52,6 +53,57 @@ An optional field exposes everything its wrapped type `T` does, **plus**:
 | `isnull` | `safe` | `field__isnull=true` / `false` — is the field `null`? |
 | `exists` | `full` | Mongo-flavored presence check (`{field: {$exists: bool}}`); SQL adapters alias it to `isnull` semantics or reject it |
 
+`Optional[list[T]]` works the same way: the array operators below, plus
+`isnull` / `exists`.
+
+## Arrays of scalars — `list[T]` / `set[T]`
+
+An array field gets operators about **membership and shape** — never the
+element type's scalar operators. `tags__contains` would be ambiguous
+(substring of an element? membership?), so it does not exist; array fields
+expose exactly this family, whatever the element type:
+
+| Operator | Tier | Value | Example | Mongo compilation |
+|---|---|---|---|---|
+| `has` | `safe` | single element | `tags__has=python` | `{"tags": "python"}` (Mongo matches a scalar against array elements) |
+| `has_any` | `safe` | element list | `tags__has_any=python,rust` | `{"tags": {"$in": ["python", "rust"]}}` |
+| `has_all` | `safe` | element list | `tags__has_all=python,rust` | `{"tags": {"$all": ["python", "rust"]}}` |
+| `len__eq` | `safe` | int | `tags__len__eq=3` | `{"tags": {"$size": 3}}` |
+| `len__ne` / `len__gt` / `len__gte` / `len__lt` / `len__lte` | `full` | int | `tags__len__gte=2` | `$expr` over `$size` (see below) |
+| `empty` | `safe` | bool | `tags__empty=false` | pinned semantics, see below |
+
+Notes, pinned precisely because arrays are where Mongo surprises people:
+
+- **`empty` semantics** (empty-vs-missing is a classic Mongo trap):
+  `empty=true` → the field exists **and** is the empty array —
+  `{"tags": {"$eq": []}}`; `empty=false` → the field exists and has at
+  least one element — `{"tags.0": {"$exists": true}}`. A **missing** field
+  matches *neither*. `empty` reasons only about shape; use `isnull` /
+  `exists` on an `Optional[list[T]]` field to reason about presence.
+- **`len` comparisons are `full`-tier** because Mongo has no query operator
+  for "length ≥ n": they compile to
+  `{"$expr": {"$gte": [{"$size": {"$cond": [{"$isArray": "$tags"}, "$tags", []]}}, 2]}}`,
+  which cannot use an index (a collection-scan risk — the same reasoning
+  that gates other `full` operators). The `$isArray` guard means a missing,
+  null, or non-array value counts as **length 0** instead of erroring the
+  query. `len__eq` compiles to the plain `$size` query operator (which a
+  missing field never matches) and stays `safe`.
+- **List values are capped**: the `max_list_length` guard (default 100)
+  applies to `has_any` / `has_all` exactly as it does to `in` / `nin`.
+- **No bare-equality sugar**: arrays have no `eq` operator, so there is no
+  bare `?tags=...` parameter.
+- **Arrays are not sortable by default** — sorting on a Mongo array field
+  uses min/max element semantics, which surprises people. Opt a field in
+  deliberately with `Filterable(sortable=True)` or by naming it in
+  `FilterConfig(sortable=[...])`.
+- Element-level substring matching (`tags__has_substr`) is designed but not
+  shipped yet.
+
+Multi-token names like `tags__len__gte` need no special parsing rules: every
+parameter is pre-generated with its exact name at registration, so the full
+spelling is simply matched as-is (see the
+[filtering tutorial](../tutorial/filtering.md#the-field__op-convention)).
+
 ## Operator semantics
 
 | Operator | Value arity | Example | Mongo compilation |
@@ -69,9 +121,10 @@ An optional field exposes everything its wrapped type `T` does, **plus**:
 | `isnull` | bool | `email__isnull=true` | `{"email": null}` |
 | `exists` | bool | `email__exists=false` | `{"email": {"$exists": false}}` |
 
-List-value operators (`in`, `nin`) accept both comma-joined values and
-repeated query keys; each element is coerced to the field's type. A
-`max_list_length` guard (default 100) caps how many values are accepted.
+List-value operators (`in`, `nin`, and the array operators `has_any` /
+`has_all`) accept both comma-joined values and repeated query keys; each
+element is coerced to the field's (element) type. A `max_list_length` guard
+(default 100) caps how many values are accepted.
 
 ## Safety notes
 

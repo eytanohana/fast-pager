@@ -106,8 +106,10 @@ to the **public** name — `"points"`, not `"score"`.
 - `Filterable(sortable=False)` removes the field from the sortable set even
   though it stays filterable. Like `ops.NONE`, it is final: listing the
   field in `FilterConfig.sortable` raises a `ConfigurationError`.
-- `Filterable(sortable=True)` adds the field even when it isn't filterable —
-  combine it with `ops.NONE` for a **sort-only** field:
+- `Filterable(sortable=True)` adds the field even when it isn't sortable by
+  default — combine it with `ops.NONE` for a **sort-only** field, or use it
+  to deliberately opt in an array (`list[T]`) field, which is otherwise
+  never sortable:
 
 ```python
 joined: Annotated[date, Filterable(ops=ops.NONE, sortable=True)]
