@@ -144,6 +144,25 @@ def test_all_operators_for_accepts_the_container():
     )
 
 
+# ---------------------------------------------------------------------------
+# Phase 3b: the embedding (Container.NESTED) operator surface.
+# ---------------------------------------------------------------------------
+
+
+def test_nested_container_exposes_only_nullability_operators():
+    assert operators_for(object, nullable=False, profile="full", container=Container.NESTED) == ()
+    safe = operators_for(object, nullable=True, profile="safe", container=Container.NESTED)
+    full = operators_for(object, nullable=True, profile="full", container=Container.NESTED)
+    assert set(safe) == {"isnull"}
+    assert set(full) == {"isnull", "exists"}
+
+
+def test_nullability_operators_apply_to_nested_container():
+    assert Container.NESTED in DEFAULT_REGISTRY["isnull"].applies_to
+    assert Container.NESTED in DEFAULT_REGISTRY["exists"].applies_to
+    assert Container.NESTED not in DEFAULT_REGISTRY["eq"].applies_to
+
+
 def test_array_registry_records():
     assert DEFAULT_REGISTRY["has"].arity is Arity.SINGLE
     assert DEFAULT_REGISTRY["has"].value_type is ValueTypeRule.SAME_AS_FIELD

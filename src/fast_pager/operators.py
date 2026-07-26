@@ -31,7 +31,7 @@ __all__ = [
 
 
 class Container(enum.Enum):
-    """The container shape of a model field (``SCALAR`` and ``LIST`` so far)."""
+    """The container shape of a model field (``SCALAR``, ``LIST``, ``NESTED`` so far)."""
 
     SCALAR = "scalar"
     LIST = "list"
@@ -77,7 +77,7 @@ class Operator:
 
 _SCALAR = frozenset({Container.SCALAR})
 _LIST = frozenset({Container.LIST})
-_SCALAR_OR_LIST = frozenset({Container.SCALAR, Container.LIST})
+_NULLABLE_CONTAINERS = frozenset({Container.SCALAR, Container.LIST, Container.NESTED})
 
 
 def _op(
@@ -111,14 +111,20 @@ DEFAULT_REGISTRY: dict[str, Operator] = {
         # `regex` is FULL-tier *and* additionally gated by FilterConfig.allow_regex.
         _op("regex", tier=Tier.FULL),
         _op("text_search", tier=Tier.FULL),
-        # Nullability operators apply to scalar *and* array fields alike.
-        _op("isnull", arity=Arity.BOOL, value_type=ValueTypeRule.BOOL, applies_to=_SCALAR_OR_LIST),
+        # Nullability operators apply to scalar, array, and nested-model
+        # (embedding) fields alike.
+        _op(
+            "isnull",
+            arity=Arity.BOOL,
+            value_type=ValueTypeRule.BOOL,
+            applies_to=_NULLABLE_CONTAINERS,
+        ),
         _op(
             "exists",
             arity=Arity.BOOL,
             value_type=ValueTypeRule.BOOL,
             tier=Tier.FULL,
-            applies_to=_SCALAR_OR_LIST,
+            applies_to=_NULLABLE_CONTAINERS,
         ),
         # Array (list[T]/set[T]) operators: membership and shape, never the
         # element's scalar operators (design doc 02, arrays of scalars).
@@ -228,16 +234,21 @@ def operators_for(
 
     ``py_type`` is the resolved scalar type — the *element* type when
     ``container`` is ``LIST``, in which case the array profile applies
-    regardless of the element kind. ``full`` includes everything in ``safe``.
+    regardless of the element kind. ``NESTED`` (embedding) fields have no
+    operators of their own beyond the nullability pair — filtering happens
+    on their leaf fields. ``full`` includes everything in ``safe``.
     Nullable fields additionally get ``isnull`` (safe) and ``exists`` (full).
     Returns ``()`` for unsupported types. The ``regex`` config gate is
     applied by the caller, not here.
     """
-    kind = type_kind(py_type)
-    if kind is None:
-        return ()
-    tp = _ARRAY_PROFILE if container is Container.LIST else _PROFILES[kind]
-    names = tp.safe if profile == "safe" else tp.safe + tp.full
+    if container is Container.NESTED:
+        names: tuple[str, ...] = ()
+    else:
+        kind = type_kind(py_type)
+        if kind is None:
+            return ()
+        tp = _ARRAY_PROFILE if container is Container.LIST else _PROFILES[kind]
+        names = tp.safe if profile == "safe" else tp.safe + tp.full
     if nullable:
         names = names + (_NULLABLE_SAFE if profile == "safe" else _NULLABLE_SAFE + _NULLABLE_FULL)
     return names

@@ -2,11 +2,12 @@
 
 Resolving ``Optional``, aliases, enums, :class:`~fast_pager.Filterable`
 metadata, and containers happens here, once, at registration time. Scalar
-fields, ``list[T]``/``set[T]`` of supported scalars, and their ``Optional``
-wrappers are supported; anything else (nested models, ``dict``, arrays of
-nested models — later stages) is silently skipped (it simply is not
-filterable yet) — unless it carries an explicit ``Filterable`` annotation,
-which is a configuration error.
+fields, ``list[T]``/``set[T]`` of supported scalars, **nested Pydantic
+models** (recursively, to a configurable depth), and their ``Optional``
+wrappers are supported; anything else (``dict``, arrays of nested models —
+later stages) is silently skipped (it simply is not filterable yet) — unless
+it carries an explicit ``Filterable`` annotation, which is a configuration
+error.
 
 Naming (design doc 02, *Field → DB-name mapping and aliases*): each field
 has two names, resolved independently —
@@ -21,6 +22,19 @@ has two names, resolved independently —
 A Pydantic alias therefore stays the default for *both* (Stage 1 behavior),
 and ``param``/``source`` pull the two apart when the URL and the database
 disagree with the model.
+
+Nested models compose both names segment by segment: the public path joins
+with the separator (``address__city``), the source path with dots
+(``address.city``), and a ``param``/``source``/alias override on any segment
+— the embedding field included — renames exactly that segment.
+
+Depth bound (design doc 02, *Parameter matching*): ``max_depth`` counts the
+embedded-model boundaries between the root model and a field. Fields more
+than ``max_depth`` boundaries below the root are silently skipped; a nested
+model sitting *exactly* at the bound still yields its own spec (so a
+nullable embedding keeps ``isnull``) but none of its children. The bound
+also truncates self-referential and mutually-recursive models — recursion
+depth strictly increases, so cycles terminate at the bound by construction.
 """
 
 from __future__ import annotations
@@ -33,10 +47,14 @@ from pydantic import BaseModel
 from pydantic.fields import FieldInfo
 
 from .errors import ConfigurationError
-from .filterable import Filterable
+from .filterable import Filterable, OpsMarker
 from .operators import Container, type_kind, type_name
 
 __all__ = ["FieldSpec", "introspect_model", "public_field_names"]
+
+#: Default number of nested-model levels below the root that introspection
+#: descends into (design doc 02: "default 2 levels").
+DEFAULT_MAX_DEPTH = 2
 
 
 @dataclass(frozen=True)
@@ -44,17 +62,22 @@ class FieldSpec:
     """One filterable field, resolved at registration time.
 
     Attributes:
-        path: Public name path; a single segment for top-level scalar fields
-            (nested paths arrive in a later stage).
-        source: Backend field name the compiled query uses
+        path: Public name path, one segment per model level:
+            ``("age",)`` for a top-level field, ``("address", "city")`` for
+            a field of a nested model.
+        source: Backend field name the compiled query uses; nested paths are
+            dotted (``"address.city"``). Each segment resolves independently
             (``Filterable(source=...)``, else the Pydantic alias, else the
             field name).
         py_type: Resolved, Optional-unwrapped base type (or ``Literal``
-            form); the *element* type for ``LIST`` fields.
-        container: Container shape; ``SCALAR``, or ``LIST`` for
-            ``list[T]``/``set[T]`` of supported scalars.
+            form); the *element* type for ``LIST`` fields, the nested model
+            class for ``NESTED`` fields.
+        container: Container shape; ``SCALAR``, ``LIST`` for
+            ``list[T]``/``set[T]`` of supported scalars, or ``NESTED`` for a
+            field embedding another Pydantic model.
         nullable: Whether the field accepts ``None`` (drives ``isnull``).
         filterable: The field's ``Filterable`` annotation, when present.
+        separator: The token joining ``path`` segments into the public name.
     """
 
     path: tuple[str, ...]
@@ -63,11 +86,12 @@ class FieldSpec:
     container: Container
     nullable: bool
     filterable: Filterable | None = None
+    separator: str = "__"
 
     @property
     def public_name(self) -> str:
         """The name clients use in query parameters."""
-        return "__".join(self.path)
+        return self.separator.join(self.path)
 
 
 def _unwrap_optional(annotation: Any) -> tuple[Any, bool]:
@@ -100,6 +124,13 @@ def _list_element(annotation: Any) -> Any | None:
     return None
 
 
+def _nested_model(annotation: Any) -> type[BaseModel] | None:
+    """The nested model class when the annotation embeds one, else ``None``."""
+    if isinstance(annotation, type) and issubclass(annotation, BaseModel):
+        return annotation
+    return None
+
+
 def _filterable_metadata(model: type[BaseModel], name: str, info: FieldInfo) -> Filterable | None:
     """Extract a field's ``Filterable`` annotation, rejecting duplicates."""
     found = [m for m in info.metadata if isinstance(m, Filterable)]
@@ -116,21 +147,74 @@ def public_field_names(model: type[BaseModel]) -> frozenset[str]:
     return frozenset(info.alias or name for name, info in model.model_fields.items())
 
 
-def introspect_model(model: type[BaseModel]) -> tuple[FieldSpec, ...]:
+def introspect_model(
+    model: type[BaseModel],
+    *,
+    separator: str = "__",
+    max_depth: int = DEFAULT_MAX_DEPTH,
+) -> tuple[FieldSpec, ...]:
     """Walk ``model_fields`` and return specs for every filterable field.
 
     Public and source names follow the module-level naming rules (``param`` /
-    alias / field name and ``source`` / alias / field name respectively).
-    Fields whose type is not a supported scalar or a ``list[T]``/``set[T]``
-    of supported scalars are skipped — unless they carry a ``Filterable``
-    annotation, which raises
-    :class:`~fast_pager.errors.ConfigurationError` naming the field and type
-    (silently ignoring explicit metadata would hide a misconfiguration).
+    alias / field name and ``source`` / alias / field name respectively),
+    composed segment by segment for nested models; ``separator`` joins the
+    public path, ``max_depth`` bounds the nested-model recursion (see the
+    module docstring for the precise semantics). Fields whose type is not
+    supported are skipped — unless they carry a ``Filterable`` annotation,
+    which raises :class:`~fast_pager.errors.ConfigurationError` naming the
+    field and type (silently ignoring explicit metadata would hide a
+    misconfiguration).
     """
     specs: list[FieldSpec] = []
+    _walk(model, (), (), specs, separator=separator, max_depth=max_depth)
+    return tuple(specs)
+
+
+def _walk(
+    model: type[BaseModel],
+    path: tuple[str, ...],
+    source_path: tuple[str, ...],
+    specs: list[FieldSpec],
+    *,
+    separator: str,
+    max_depth: int,
+) -> None:
+    """Append the specs of one model level, recursing into nested models."""
     for name, info in model.model_fields.items():
         filterable = _filterable_metadata(model, name, info)
         base, nullable = _unwrap_optional(info.annotation)
+        default_name = info.alias or name
+        public = filterable.param if filterable is not None and filterable.param else default_name
+        source = filterable.source if filterable is not None and filterable.source else default_name
+        field_path = (*path, public)
+        source_name = ".".join((*source_path, source))
+        nested = _nested_model(base)
+        if nested is not None:
+            # The embedding field itself: only nullability operators apply,
+            # but the spec always exists so exclude/sortable/ops.NONE can
+            # target the subtree by its public name.
+            specs.append(
+                FieldSpec(
+                    path=field_path,
+                    source=source_name,
+                    py_type=nested,
+                    container=Container.NESTED,
+                    nullable=nullable,
+                    filterable=filterable,
+                    separator=separator,
+                )
+            )
+            opted_out = filterable is not None and filterable.ops is OpsMarker.NONE
+            if not opted_out and len(field_path) <= max_depth:
+                _walk(
+                    nested,
+                    field_path,
+                    (*source_path, source),
+                    specs,
+                    separator=separator,
+                    max_depth=max_depth,
+                )
+            continue
         element = _list_element(base)
         if element is not None:
             py_type, container = element, Container.LIST
@@ -144,17 +228,14 @@ def introspect_model(model: type[BaseModel]) -> tuple[FieldSpec, ...]:
                     f"filterable type"
                 )
             continue
-        default_name = info.alias or name
-        public = filterable.param if filterable is not None and filterable.param else default_name
-        source = filterable.source if filterable is not None and filterable.source else default_name
         specs.append(
             FieldSpec(
-                path=(public,),
-                source=source,
+                path=field_path,
+                source=source_name,
                 py_type=py_type,
                 container=container,
                 nullable=nullable,
                 filterable=filterable,
+                separator=separator,
             )
         )
-    return tuple(specs)

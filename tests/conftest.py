@@ -62,6 +62,28 @@ class Tagged(BaseModel):
     labels: Optional[list[str]] = None
 
 
+class Geo(BaseModel):
+    lat: float
+    lon: float
+
+
+class Address(BaseModel):
+    """A nested model with scalars, a renamed source, an array, and deeper nesting."""
+
+    city: str
+    zip_code: Annotated[str, Filterable(source="zip")]
+    tags: list[str]
+    geo: Geo
+
+
+class Customer(BaseModel):
+    """The Phase 3b workhorse: nested models in every supported shape."""
+
+    name: str
+    address: Address
+    billing: Optional[Address] = None
+
+
 @pytest.fixture(autouse=True)
 def _clear_plan_cache():
     """Isolate the per-(model, config) plan cache between tests."""

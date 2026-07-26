@@ -8,7 +8,7 @@ from uuid import UUID
 import pytest
 from pydantic import BaseModel, Field
 
-from conftest import Aliased, Color, Tagged, User
+from conftest import Address, Aliased, Color, Customer, Tagged, User
 from fast_pager import ConfigurationError, Filterable, ops
 from fast_pager.introspection import introspect_model, public_field_names
 from fast_pager.operators import Container
@@ -73,17 +73,6 @@ def test_unsupported_fields_are_skipped():
         maybe_either: Optional[Union[int, str]] = None
 
     assert set(spec_map(M)) == {"ok"}
-
-
-def test_nested_models_are_skipped_in_stage_1():
-    class Inner(BaseModel):
-        city: str
-
-    class Outer(BaseModel):
-        inner: Inner
-        name: str
-
-    assert set(spec_map(Outer)) == {"name"}
 
 
 def test_public_field_names_includes_unfilterable_fields():
@@ -210,3 +199,158 @@ def test_filterable_source_and_param_apply_to_list_fields():
     spec = spec_map(M)["labels"]
     assert spec.container is Container.LIST
     assert spec.source == "tagList"
+
+
+# ---------------------------------------------------------------------------
+# Phase 3b: nested Pydantic models → multi-segment paths, dotted sources.
+# ---------------------------------------------------------------------------
+
+
+def test_nested_scalar_fields_get_multi_segment_paths_and_dotted_sources():
+    city = spec_map(Customer)["address__city"]
+    assert city.path == ("address", "city")
+    assert city.source == "address.city"
+    assert city.py_type is str
+    assert city.container is Container.SCALAR
+    assert city.nullable is False
+
+
+def test_embedding_field_gets_its_own_nested_spec():
+    addr = spec_map(Customer)["address"]
+    assert addr.container is Container.NESTED
+    assert addr.py_type is Address
+    assert addr.nullable is False
+    assert addr.source == "address"
+
+
+def test_optional_nested_model_is_nullable_and_children_still_generated():
+    specs = spec_map(Customer)
+    assert specs["billing"].nullable is True
+    assert specs["billing"].container is Container.NESTED
+    assert specs["billing__city"].container is Container.SCALAR
+    assert specs["billing__city"].source == "billing.city"
+
+
+def test_arrays_inside_nested_models_resolve_to_list_container():
+    spec = spec_map(Customer)["address__tags"]
+    assert spec.container is Container.LIST
+    assert spec.py_type is str
+    assert spec.source == "address.tags"
+
+
+def test_nested_source_override_composes_into_the_dotted_path():
+    assert spec_map(Customer)["address__zip_code"].source == "address.zip"
+
+
+def test_source_on_the_embedding_field_renames_that_segment():
+    class M(BaseModel):
+        address: Annotated[Address, Filterable(source="addr")]
+
+    specs = spec_map(M)
+    assert specs["address"].source == "addr"
+    assert specs["address__zip_code"].source == "addr.zip"
+    assert specs["address__geo__lat"].source == "addr.geo.lat"
+
+
+def test_param_on_nested_and_embedding_fields_renames_public_segments():
+    class Inner(BaseModel):
+        postal_code: Annotated[str, Filterable(param="zip")]
+
+    class M(BaseModel):
+        shipping_address: Annotated[Inner, Filterable(param="addr")]
+
+    specs = spec_map(M)
+    assert specs["addr__zip"].source == "shipping_address.postal_code"
+
+
+def test_alias_defaults_both_names_in_nested_paths():
+    class Inner(BaseModel):
+        postal_code: str = Field(alias="postalCode")
+
+    class M(BaseModel):
+        address: Inner
+
+    assert spec_map(M)["address__postalCode"].source == "address.postalCode"
+
+
+def test_fields_beyond_the_depth_bound_are_silently_skipped():
+    class L3(BaseModel):
+        x: int
+
+    class L2(BaseModel):
+        leaf: int
+        l3: L3
+
+    class L1(BaseModel):
+        l2: L2
+
+    class Root(BaseModel):
+        l1: L1
+
+    specs = spec_map(Root)
+    assert "l1__l2__leaf" in specs  # exactly 2 model boundaries below the root
+    # An embedding sitting exactly at the bound keeps its own spec...
+    assert "l1__l2__l3" in specs
+    # ...but its children are 3 boundaries deep and are skipped.
+    assert "l1__l2__l3__x" not in specs
+
+
+def test_max_depth_is_configurable():
+    one = {s.public_name for s in introspect_model(Customer, max_depth=1)}
+    assert "address__city" in one
+    assert "address__geo" in one  # the embedding at the bound keeps its spec
+    assert "address__geo__lat" not in one
+    zero = {s.public_name for s in introspect_model(Customer, max_depth=0)}
+    assert "address" in zero and "billing" in zero
+    assert "address__city" not in zero
+
+
+def test_self_referential_model_truncates_at_the_depth_bound():
+    class Node(BaseModel):
+        value: int
+        parent: Optional["Node"] = None
+
+    Node.model_rebuild()
+    specs = spec_map(Node)
+    assert {"value", "parent", "parent__value", "parent__parent"} <= set(specs)
+    assert "parent__parent__value" in specs  # 2 boundaries: still in
+    assert "parent__parent__parent__value" not in specs  # 3 boundaries: out
+
+
+def test_mutually_recursive_models_truncate_at_the_depth_bound():
+    class A(BaseModel):
+        name: str
+        b: Optional["B"] = None
+
+    class B(BaseModel):
+        title: str
+        a: Optional[A] = None
+
+    A.model_rebuild(_types_namespace={"B": B})
+    specs = spec_map(A)
+    assert {"b__title", "b__a__name"} <= set(specs)
+    assert "b__a__b__title" not in specs
+
+
+def test_ops_none_on_the_embedding_field_excludes_the_whole_subtree():
+    class M(BaseModel):
+        name: str
+        address: Annotated[Address, Filterable(ops=ops.NONE)]
+
+    specs = spec_map(M)
+    assert "address" in specs  # the spec exists and carries the opt-out
+    assert not any(name.startswith("address__") for name in specs)
+
+
+def test_custom_separator_joins_nested_public_names():
+    specs = {s.public_name for s in introspect_model(Customer, separator=".")}
+    assert "address.geo.lat" in specs
+
+
+def test_list_of_nested_models_and_dicts_stay_skipped():
+    class M(BaseModel):
+        ok: str
+        addresses: list[Address]
+        meta: dict[str, str]
+
+    assert set(spec_map(M)) == {"ok"}
