@@ -2,7 +2,7 @@
 
 [![PyPI version](https://img.shields.io/pypi/v/fast-pager.svg)](https://pypi.org/project/fast-pager/)
 [![CI](https://github.com/eytanohana/fast-pager/actions/workflows/ci.yml/badge.svg)](https://github.com/eytanohana/fast-pager/actions/workflows/ci.yml)
-[![Docs](https://img.shields.io/badge/docs-eytanohana.github.io%2Ffast--pager-blue)](https://eytanohana.github.io/fast-pager/)
+[![Docs](https://img.shields.io/badge/docs-fast--pager.eytanohana.com-blue)](https://fast-pager.eytanohana.com/)
 
 > Turn your Pydantic models into filterable, sortable, paginated FastAPI query parameters — automatically.
 
@@ -48,15 +48,19 @@ Claude Code). Design documents and code are AI-generated and human-reviewed.
 
 ## Status
 
-`fast-pager` is in the **design phase**. The package is published to PyPI as a
-placeholder (`0.0.x`) to reserve the name — it contains no functionality yet.
-Don't depend on it until `0.1`.
+`fast-pager` is under **active development** on the `0.0.x` series: the
+zero-config scalar filtering pipeline, Mongo compiler, and per-field
+`Filterable(...)` control shown above are implemented and released. The API
+is still stabilizing toward `0.1.0` — minor breaking changes are possible
+between `0.0.x` versions. See the
+[changelog](https://fast-pager.eytanohana.com/latest/changelog/) for exactly
+what each version shipped.
 
 ## Documentation
 
 The full documentation site — getting started, tutorials, operator
 reference, and the design documents below — lives at
-**[eytanohana.github.io/fast-pager](https://eytanohana.github.io/fast-pager/)**.
+**[fast-pager.eytanohana.com](https://fast-pager.eytanohana.com/)**.
 It's built with [Zensical](https://zensical.org) from `docs/`; see
 [`docs/contributing/docs-site.md`](docs/contributing/docs-site.md) for how
 it's configured and how to preview it locally.
