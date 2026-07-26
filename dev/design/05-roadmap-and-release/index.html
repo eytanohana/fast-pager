@@ -801,10 +801,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#phase-1-core-mongo-scalars-only-01" class="md-nav__link">
+  <a href="#phase-1-core-mongo-scalars-only" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Phase 1 — Core + Mongo, scalars only (<code>0.1</code>)
+        Phase 1 — Core + Mongo, scalars only
       </span>
     </span>
   </a>
@@ -812,10 +812,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#phase-2-configurability-compound-types-0203" class="md-nav__link">
+  <a href="#phase-2-configurability-compound-types" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Phase 2 — Configurability + compound types (<code>0.2</code>–<code>0.3</code>)
+        Phase 2 — Configurability + compound types
       </span>
     </span>
   </a>
@@ -823,10 +823,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#phase-3-second-backend-ergonomics-0406" class="md-nav__link">
+  <a href="#phase-3-second-backend-ergonomics" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Phase 3 — Second backend + ergonomics (<code>0.4</code>–<code>0.6</code>)
+        Phase 3 — Second backend + ergonomics
       </span>
     </span>
   </a>
@@ -1043,10 +1043,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#phase-1-core-mongo-scalars-only-01" class="md-nav__link">
+  <a href="#phase-1-core-mongo-scalars-only" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Phase 1 — Core + Mongo, scalars only (<code>0.1</code>)
+        Phase 1 — Core + Mongo, scalars only
       </span>
     </span>
   </a>
@@ -1054,10 +1054,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#phase-2-configurability-compound-types-0203" class="md-nav__link">
+  <a href="#phase-2-configurability-compound-types" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Phase 2 — Configurability + compound types (<code>0.2</code>–<code>0.3</code>)
+        Phase 2 — Configurability + compound types
       </span>
     </span>
   </a>
@@ -1065,10 +1065,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#phase-3-second-backend-ergonomics-0406" class="md-nav__link">
+  <a href="#phase-3-second-backend-ergonomics" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Phase 3 — Second backend + ergonomics (<code>0.4</code>–<code>0.6</code>)
+        Phase 3 — Second backend + ergonomics
       </span>
     </span>
   </a>
@@ -1129,6 +1129,14 @@
 <h1 id="05-roadmap-release-plan">05 — Roadmap &amp; Release Plan<a class="headerlink" href="#05-roadmap-release-plan" title="Permanent link">&para;</a></h1>
 <p>A phased path from empty repo to a clean, documented, pleasurable 1.0 on PyPI.
 Each phase ends with something shippable and is gated by concrete exit criteria.</p>
+<blockquote>
+<p><strong>Versioning:</strong> the authoritative phase→version mapping lives in the
+<a href="https://github.com/eytanohana/fast-pager/blob/main/DEVELOPMENT_PLAN.md#version-map-summary">development plan's version map</a>
+and evolves with execution (large phases ship as several additive <code>0.x.y</code>
+checkpoint releases; minor bumps mark phase boundaries and are where
+pre-1.0 breaking changes may land). This document deliberately no longer
+pins version numbers to phases.</p>
+</blockquote>
 <h2 id="project-foundations-do-this-once-in-phase-0">Project foundations (do this once, in Phase 0)<a class="headerlink" href="#project-foundations-do-this-once-in-phase-0" title="Permanent link">&para;</a></h2>
 <ul>
 <li><strong>Tooling:</strong> <code>uv</code> for env/deps, <code>hatchling</code> build backend, <code>ruff</code>
@@ -1152,7 +1160,7 @@ Each phase ends with something shippable and is gated by concrete exit criteria.
 are optional extras (<code>[mongo]</code>, <code>[sqlalchemy]</code>). Core has <strong>no database
 dependency</strong>.</p>
 <hr />
-<h2 id="phase-1-core-mongo-scalars-only-01">Phase 1 — Core + Mongo, scalars only (<code>0.1</code>)<a class="headerlink" href="#phase-1-core-mongo-scalars-only-01" title="Permanent link">&para;</a></h2>
+<h2 id="phase-1-core-mongo-scalars-only">Phase 1 — Core + Mongo, scalars only<a class="headerlink" href="#phase-1-core-mongo-scalars-only" title="Permanent link">&para;</a></h2>
 <p><strong>Goal:</strong> the headline demo works end to end for scalar fields.</p>
 <ul>
 <li>Introspector for scalar + <code>Optional</code> fields.</li>
@@ -1169,7 +1177,7 @@ dependency</strong>.</p>
 <code>limit</code> correct; OpenAPI shows typed params; &gt;90% coverage on core; mypy-strict
 clean.</p>
 <hr />
-<h2 id="phase-2-configurability-compound-types-0203">Phase 2 — Configurability + compound types (<code>0.2</code>–<code>0.3</code>)<a class="headerlink" href="#phase-2-configurability-compound-types-0203" title="Permanent link">&para;</a></h2>
+<h2 id="phase-2-configurability-compound-types">Phase 2 — Configurability + compound types<a class="headerlink" href="#phase-2-configurability-compound-types" title="Permanent link">&para;</a></h2>
 <p><strong>Goal:</strong> real-world models, real control.</p>
 <ul>
 <li><code>Annotated[T, Filterable(...)]</code> (Option A): per-field ops, <code>source</code>, <code>param</code>.</li>
@@ -1182,7 +1190,7 @@ clean.</p>
 <p><strong>Exit criteria:</strong> all type tables in doc 02 implemented &amp; tested; a non-trivial
 example app (users + addresses + tags + orders) filters correctly.</p>
 <hr />
-<h2 id="phase-3-second-backend-ergonomics-0406">Phase 3 — Second backend + ergonomics (<code>0.4</code>–<code>0.6</code>)<a class="headerlink" href="#phase-3-second-backend-ergonomics-0406" title="Permanent link">&para;</a></h2>
+<h2 id="phase-3-second-backend-ergonomics">Phase 3 — Second backend + ergonomics<a class="headerlink" href="#phase-3-second-backend-ergonomics" title="Permanent link">&para;</a></h2>
 <p><strong>Goal:</strong> prove the multi-backend thesis; polish DX.</p>
 <ul>
 <li><strong>SQLAlchemy adapter</strong> + capability model + the <strong>conformance test suite</strong>.</li>
