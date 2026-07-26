@@ -265,8 +265,10 @@ unknown. So support is deliberately narrow:
   generates `metadata__region`, `metadata__tier` (typed as `T`, **implicit
   `eq` only** in this release), and nothing else. No enumeration → no value
   filtering; we do not accept arbitrary `metadata__<anything>` at request
-  time, because those params would be undocumented and untyped. Richer
-  per-key operator curation is deferred to `FilterSet`.
+  time, because those params would be undocumented and untyped. Value-at-key
+  stays eq-only **by design**, including under `FilterSet` — a map key is an
+  escape hatch, not a schema; fields needing richer operators belong in the
+  model.
 
 Because a map key becomes part of a Mongo field path, keys are
 **sanitized**: empty keys and keys containing `.`, `$`, or NUL are rejected —
@@ -365,7 +367,7 @@ design provides four layers, from coarse to fine, each overriding the previous:
            model = User
            fields = {"name": ["contains"], "age": ["gte", "lte"]}
        # custom filter not derivable from a single field:
-       active_since = DateFilter(field="last_login", op="gte")
+       active_since = Filter(field="last_login", op="gte")
    ```
 
 Two rules pin down how the ladder interacts with the safety gates (settled by
