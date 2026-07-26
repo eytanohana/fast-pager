@@ -42,8 +42,8 @@ Stage 1 deliverable.
 |---|---|---|
 | `0.0.1` | 0 | ✅ Name reserved on PyPI; CI + release automation |
 | `0.0.2` | 1 | ✅ Stage 1 in full (both planned checkpoints landed together): core engine + FastAPI integration + versioned docs site — the README demo works |
-| `0.0.3` | 2 | Per-field control: `Annotated[T, Filterable(...)]`, per-type profiles, strict mode |
-| `0.1.0` | 1–2 | Stages 1–2 exit criteria green, docs describe the shipped API, polish |
+| `0.0.3` | 2 | ✅ Per-field control: `Annotated[T, Filterable(...)]`, per-type profiles, strict mode |
+| `0.1.0` | 1–2 | Stages 1–2 exit criteria green, docs describe the shipped API, polish — the release being cut now |
 | `0.2.0` | 3 | `FilterSet` + compound types (arrays, nested models, `elem`) |
 | `0.3.0` | 4 | `Page[T]` envelope, `paginate()` helpers, count modes |
 | `0.4.0` | 5 | SQLAlchemy backend + conformance test suite |
@@ -190,7 +190,7 @@ bumped by `release.sh minor`.
 3. Docs: FilterSet guide; compound-types guide; array-semantics page
    (the `$elemMatch` surprise, documented loudly).
 4. Exit: all doc 02 type tables implemented & tested; the non-trivial example
-   app (users + addresses + tags + orders) works → release `v0.3.0`.
+   app (users + addresses + tags + orders) works → release `v0.2.0`.
 
 ## Stage 4 — Response envelope & ergonomics → `v0.3.0`
 
