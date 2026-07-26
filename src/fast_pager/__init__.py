@@ -25,6 +25,7 @@ from .config import FilterConfig
 from .dependency import FilterDepends
 from .errors import CompilationError, ConfigurationError, FastPagerError
 from .filterable import Filterable, OpsMarker, ops
+from .filterset import Filter, FilterSet
 from .introspection import FieldSpec, introspect_model
 from .operators import DEFAULT_REGISTRY, Arity, Container, Operator, Tier, ValueTypeRule
 from .query import FilterQuery
@@ -38,10 +39,12 @@ __all__ = [
     "Container",
     "FastPagerError",
     "FieldSpec",
+    "Filter",
     "FilterAST",
     "FilterConfig",
     "FilterDepends",
     "FilterQuery",
+    "FilterSet",
     "Filterable",
     "Group",
     "MongoCompiler",

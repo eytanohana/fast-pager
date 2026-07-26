@@ -10,6 +10,7 @@ from pydantic import BaseModel
 
 from .config import FilterConfig
 from .errors import ConfigurationError
+from .filterset import FilterSet, filterset_plan
 from .params import QueryPlan, build_plan
 from .query import FilterQuery
 
@@ -67,17 +68,34 @@ def _resolve_model(target: Any) -> type[BaseModel]:
 def FilterDepends(target: Any, *, config: FilterConfig | None = None) -> Any:
     """Create the FastAPI dependency for a model's filter/sort/page surface.
 
-    Accepts the resource model directly (``FilterDepends(User)``) or the
-    typed alias (``FilterDepends(FilterQuery[User])``); both yield the same
-    :class:`~fast_pager.query.FilterQuery` object at request time.
+    Accepts the resource model directly (``FilterDepends(User)``), the typed
+    alias (``FilterDepends(FilterQuery[User])``), or a
+    :class:`~fast_pager.filterset.FilterSet` subclass
+    (``FilterDepends(UserFilter)``); every form yields the same
+    :class:`~fast_pager.query.FilterQuery` object at request time, so call
+    sites never change when a model graduates between them.
 
     Parameter generation, config validation, and collision detection all run
-    *here*, at route-registration time — misconfiguration raises
+    at registration time — misconfiguration raises
     :class:`~fast_pager.errors.ConfigurationError` before the app serves
-    traffic.
+    traffic (a FilterSet validates even earlier, at class definition). A
+    FilterSet carries its own configuration in ``Meta.config``, so passing
+    ``config=`` alongside one is a :class:`ConfigurationError` rather than a
+    silent tiebreak.
     """
-    model = _resolve_model(target)
-    plan = build_plan(model, config if config is not None else FilterConfig())
+    if isinstance(target, type) and issubclass(target, FilterSet):
+        if config is not None:
+            raise ConfigurationError(
+                f"FilterDepends({target.__name__}, config=...) is ambiguous: a "
+                f"FilterSet carries its configuration in Meta.config; remove the "
+                f"config argument"
+            )
+        plan = filterset_plan(target)
+        name = target.__name__
+    else:
+        model = _resolve_model(target)
+        plan = build_plan(model, config if config is not None else FilterConfig())
+        name = model.__name__
 
     def dependency(request: Request, raw: BaseModel) -> FilterQuery[Any]:
         if plan.config.unknown_params == "strict":
@@ -88,5 +106,5 @@ def FilterDepends(target: Any, *, config: FilterConfig | None = None) -> Any:
     # and the dynamic model is not resolvable by name anyway — assign the
     # real annotation object so FastAPI sees the query-parameter model.
     dependency.__annotations__["raw"] = Annotated[plan.params_model, Query()]
-    dependency.__name__ = f"filter_{model.__name__}"
+    dependency.__name__ = f"filter_{name}"
     return Depends(dependency)

@@ -83,12 +83,18 @@ _OP_HELP: dict[str, str] = {
 
 @dataclass(frozen=True)
 class ResolvedParam:
-    """One generated query parameter bound to a ``(field, operator)`` pair."""
+    """One generated query parameter bound to a ``(field, operator)`` pair.
+
+    ``description`` overrides the generated OpenAPI description; it is only
+    set for a :class:`~fast_pager.filterset.Filter` declared with one — the
+    default (``None``) derives the description from the field and operator.
+    """
 
     url_name: str
     python_name: str
     spec: FieldSpec
     operator: Operator
+    description: str | None = None
 
 
 @dataclass(frozen=True, eq=False)
@@ -487,7 +493,7 @@ def _resolve_sortable(
 
 
 def _build_params_model(
-    model: type[BaseModel],
+    name: str,
     params: tuple[ResolvedParam, ...],
     sortable: frozenset[str],
     config: FilterConfig,
@@ -496,7 +502,9 @@ def _build_params_model(
     field_defs: dict[str, Any] = {}
     for p in params:
         annotation = _value_annotation(p.spec, p.operator, config)
-        description = f"Filter: `{p.spec.public_name}` {_OP_HELP[p.operator.name]}."
+        description = (
+            p.description or f"Filter: `{p.spec.public_name}` {_OP_HELP[p.operator.name]}."
+        )
         field_defs[p.python_name] = (
             annotation,
             Field(None, alias=p.url_name, description=description),
@@ -529,7 +537,7 @@ def _build_params_model(
         "_check_max_filters": _max_filters_checker(filter_names, config.max_filters),
     }
     return create_model(
-        f"{model.__name__}FilterParams",
+        name,
         __config__=ConfigDict(populate_by_name=True, extra="ignore"),
         __validators__=validators,
         **field_defs,
@@ -553,7 +561,7 @@ def build_plan(model: type[BaseModel], config: FilterConfig) -> QueryPlan:
     filterable_specs = tuple(s for s in visible if not _is_unfilterable(s))
     params = _resolve_params(filterable_specs, config)
     sortable = _resolve_sortable(model, visible, filterable_specs, config)
-    params_model = _build_params_model(model, params, sortable, config)
+    params_model = _build_params_model(f"{model.__name__}FilterParams", params, sortable, config)
     plan = QueryPlan(
         model=model,
         config=config,
