@@ -571,6 +571,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#arrays-of-scalars-listt-sett" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Arrays of scalars — <code>list[T]</code> / <code>set[T]</code>
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#operator-semantics" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -1023,6 +1034,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#arrays-of-scalars-listt-sett" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Arrays of scalars — <code>list[T]</code> / <code>set[T]</code>
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#operator-semantics" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -1064,13 +1086,14 @@
 
 <h1 id="operator-reference">Operator Reference<a class="headerlink" href="#operator-reference" title="Permanent link">&para;</a></h1>
 <div class="admonition note">
-<p class="admonition-title">Scalar types only (for now)</p>
-<p>The current release supports the <strong>scalar types</strong> below. Compound types —
-<code>list[T]</code>, nested Pydantic models, <code>dict[str, T]</code> and arrays of nested
-models — are designed (see
-<a href="../../design/02-type-and-operator-system/">design doc 02</a>) but land in
-<strong><code>v0.2.0</code></strong> together with <code>FilterSet</code>. This page tracks the scalar
-tables only; it will grow compound-type tables once those ship.</p>
+<p class="admonition-title">Scalars and arrays of scalars (for now)</p>
+<p>The current release supports the <strong>scalar types</strong> below and <strong>arrays of
+scalars</strong> (<code>list[T]</code> / <code>set[T]</code>). The remaining compound types are
+designed (see
+<a href="../../design/02-type-and-operator-system/">design doc 02</a>) and land in
+phased releases: nested Pydantic models in <strong><code>v0.1.2</code></strong>, arrays of
+nested models and <code>dict[str, T]</code> keys in <strong><code>v0.1.3</code></strong>, and <code>FilterSet</code>
+in <strong><code>v0.2.0</code></strong>. This page grows a table per type as each ships.</p>
 </div>
 <p>Every operator set below is the <em>default</em> for its type — the <strong><code>safe</code></strong>
 profile. Operators listed under <strong><code>full</code></strong> are additional operators
@@ -1158,6 +1181,99 @@ the common case (<code>?status=active</code>) stays clean.</p>
 </tr>
 </tbody>
 </table>
+<p><code>Optional[list[T]]</code> works the same way: the array operators below, plus
+<code>isnull</code> / <code>exists</code>.</p>
+<h2 id="arrays-of-scalars-listt-sett">Arrays of scalars — <code>list[T]</code> / <code>set[T]</code><a class="headerlink" href="#arrays-of-scalars-listt-sett" title="Permanent link">&para;</a></h2>
+<p>An array field gets operators about <strong>membership and shape</strong> — never the
+element type's scalar operators. <code>tags__contains</code> would be ambiguous
+(substring of an element? membership?), so it does not exist; array fields
+expose exactly this family, whatever the element type:</p>
+<table>
+<thead>
+<tr>
+<th>Operator</th>
+<th>Tier</th>
+<th>Value</th>
+<th>Example</th>
+<th>Mongo compilation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>has</code></td>
+<td><code>safe</code></td>
+<td>single element</td>
+<td><code>tags__has=python</code></td>
+<td><code>{"tags": "python"}</code> (Mongo matches a scalar against array elements)</td>
+</tr>
+<tr>
+<td><code>has_any</code></td>
+<td><code>safe</code></td>
+<td>element list</td>
+<td><code>tags__has_any=python,rust</code></td>
+<td><code>{"tags": {"$in": ["python", "rust"]}}</code></td>
+</tr>
+<tr>
+<td><code>has_all</code></td>
+<td><code>safe</code></td>
+<td>element list</td>
+<td><code>tags__has_all=python,rust</code></td>
+<td><code>{"tags": {"$all": ["python", "rust"]}}</code></td>
+</tr>
+<tr>
+<td><code>len__eq</code></td>
+<td><code>safe</code></td>
+<td>int</td>
+<td><code>tags__len__eq=3</code></td>
+<td><code>{"tags": {"$size": 3}}</code></td>
+</tr>
+<tr>
+<td><code>len__ne</code> / <code>len__gt</code> / <code>len__gte</code> / <code>len__lt</code> / <code>len__lte</code></td>
+<td><code>full</code></td>
+<td>int</td>
+<td><code>tags__len__gte=2</code></td>
+<td><code>$expr</code> over <code>$size</code> (see below)</td>
+</tr>
+<tr>
+<td><code>empty</code></td>
+<td><code>safe</code></td>
+<td>bool</td>
+<td><code>tags__empty=false</code></td>
+<td>pinned semantics, see below</td>
+</tr>
+</tbody>
+</table>
+<p>Notes, pinned precisely because arrays are where Mongo surprises people:</p>
+<ul>
+<li><strong><code>empty</code> semantics</strong> (empty-vs-missing is a classic Mongo trap):
+  <code>empty=true</code> → the field exists <strong>and</strong> is the empty array —
+  <code>{"tags": {"$eq": []}}</code>; <code>empty=false</code> → the field exists and has at
+  least one element — <code>{"tags.0": {"$exists": true}}</code>. A <strong>missing</strong> field
+  matches <em>neither</em>. <code>empty</code> reasons only about shape; use <code>isnull</code> /
+  <code>exists</code> on an <code>Optional[list[T]]</code> field to reason about presence.</li>
+<li><strong><code>len</code> comparisons are <code>full</code>-tier</strong> because Mongo has no query operator
+  for "length ≥ n": they compile to
+  <code>{"$expr": {"$gte": [{"$size": {"$cond": [{"$isArray": "$tags"}, "$tags", []]}}, 2]}}</code>,
+  which cannot use an index (a collection-scan risk — the same reasoning
+  that gates other <code>full</code> operators). The <code>$isArray</code> guard means a missing,
+  null, or non-array value counts as <strong>length 0</strong> instead of erroring the
+  query. <code>len__eq</code> compiles to the plain <code>$size</code> query operator (which a
+  missing field never matches) and stays <code>safe</code>.</li>
+<li><strong>List values are capped</strong>: the <code>max_list_length</code> guard (default 100)
+  applies to <code>has_any</code> / <code>has_all</code> exactly as it does to <code>in</code> / <code>nin</code>.</li>
+<li><strong>No bare-equality sugar</strong>: arrays have no <code>eq</code> operator, so there is no
+  bare <code>?tags=...</code> parameter.</li>
+<li><strong>Arrays are not sortable by default</strong> — sorting on a Mongo array field
+  uses min/max element semantics, which surprises people. Opt a field in
+  deliberately with <code>Filterable(sortable=True)</code> or by naming it in
+  <code>FilterConfig(sortable=[...])</code>.</li>
+<li>Element-level substring matching (<code>tags__has_substr</code>) is designed but not
+  shipped yet.</li>
+</ul>
+<p>Multi-token names like <code>tags__len__gte</code> need no special parsing rules: every
+parameter is pre-generated with its exact name at registration, so the full
+spelling is simply matched as-is (see the
+<a href="../../tutorial/filtering/#the-field__op-convention">filtering tutorial</a>).</p>
 <h2 id="operator-semantics">Operator semantics<a class="headerlink" href="#operator-semantics" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
@@ -1243,9 +1359,10 @@ the common case (<code>?status=active</code>) stays clean.</p>
 </tr>
 </tbody>
 </table>
-<p>List-value operators (<code>in</code>, <code>nin</code>) accept both comma-joined values and
-repeated query keys; each element is coerced to the field's type. A
-<code>max_list_length</code> guard (default 100) caps how many values are accepted.</p>
+<p>List-value operators (<code>in</code>, <code>nin</code>, and the array operators <code>has_any</code> /
+<code>has_all</code>) accept both comma-joined values and repeated query keys; each
+element is coerced to the field's (element) type. A <code>max_list_length</code> guard
+(default 100) caps how many values are accepted.</p>
 <h2 id="safety-notes">Safety notes<a class="headerlink" href="#safety-notes" title="Permanent link">&para;</a></h2>
 <ul>
 <li><strong><code>regex</code> is <code>full</code>-only</strong> and gated by an additional config flag — full

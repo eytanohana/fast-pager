@@ -905,6 +905,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#011-stage-3-checkpoint-arrays-of-scalars" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        <code>0.1.1</code> — Stage 3 checkpoint: arrays of scalars
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#010-first-minor-release-stages-12-finalized" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -949,10 +960,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#coming-in-v020" class="md-nav__link">
+  <a href="#coming-next" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Coming in <code>v0.2.0</code>
+        Coming next
       </span>
     </span>
   </a>
@@ -1008,6 +1019,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#011-stage-3-checkpoint-arrays-of-scalars" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        <code>0.1.1</code> — Stage 3 checkpoint: arrays of scalars
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#010-first-minor-release-stages-12-finalized" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -1052,10 +1074,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#coming-in-v020" class="md-nav__link">
+  <a href="#coming-next" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Coming in <code>v0.2.0</code>
+        Coming next
       </span>
     </span>
   </a>
@@ -1086,6 +1108,22 @@ unstable API, and breaking changes bump the minor version and are called out
 below. See the <a href="../design/05-roadmap-and-release/">Roadmap</a> for what's coming
 next, and the <a href="https://github.com/eytanohana/fast-pager/blob/main/DEVELOPMENT_PLAN.md">development plan</a>
 for the execution detail behind each stage.</p>
+<h2 id="011-stage-3-checkpoint-arrays-of-scalars"><code>0.1.1</code> — Stage 3 checkpoint: arrays of scalars<a class="headerlink" href="#011-stage-3-checkpoint-arrays-of-scalars" title="Permanent link">&para;</a></h2>
+<p><code>list[T]</code> and <code>set[T]</code> fields (any supported scalar element type, including
+<code>Optional[list[T]]</code>) are now filterable with their own <strong>membership and
+shape</strong> operator family: <code>has</code>, <code>has_any</code>, <code>has_all</code>, <code>len__eq</code> and the
+<code>empty</code> operator in the <code>safe</code> tier, plus the <code>len__ne</code>/<code>len__gt</code>/<code>len__gte</code>/
+<code>len__lt</code>/<code>len__lte</code> comparisons in the <code>full</code> tier (they compile to <code>$expr</code>
+over <code>$size</code>, which can't use an index). The <code>empty</code> operator pins down the
+classic empty-vs-missing Mongo trap — a missing field matches neither
+<code>empty=true</code> nor <code>empty=false</code> — and array fields deliberately get <strong>no
+scalar operators</strong> (<code>tags__contains</code> doesn't exist) and are <strong>not sortable
+by default</strong> (<code>Filterable(sortable=True)</code> opts in). <code>max_list_length</code>
+guards <code>has_any</code>/<code>has_all</code> exactly as it does <code>in</code>/<code>nin</code>. Strictly additive:
+no behavior changes to anything shipped in <code>0.1.0</code>. See the new
+<a href="../reference/operators/#arrays-of-scalars-listt-sett">array tables in the Operator Reference</a>
+and the <a href="../tutorial/filtering/#array-fields">arrays section of the filtering tutorial</a>.
+100% test coverage, <code>mypy --strict</code> clean.</p>
 <h2 id="010-first-minor-release-stages-12-finalized"><code>0.1.0</code> — first minor release: Stages 1–2 finalized<a class="headerlink" href="#010-first-minor-release-stages-12-finalized" title="Permanent link">&para;</a></h2>
 <p>Stages 1–2 are complete and consolidated: the core filter → sort → paginate
 pipeline, the MongoDB query compiler, zero-config <code>FilterQuery[Model]</code> /
@@ -1125,12 +1163,13 @@ the repository has CI + fully automated release tooling
 (<code>scripts/release.sh</code>, tag-triggered PyPI publish via Trusted Publishing),
 but <strong>no library functionality yet</strong>. Nothing in this documentation site is
 installable against <code>0.0.1</code> — see <a href="../getting-started/">Getting Started</a>.</p>
-<h2 id="coming-in-v020">Coming in <code>v0.2.0</code><a class="headerlink" href="#coming-in-v020" title="Permanent link">&para;</a></h2>
-<p>Stage 3: the <code>FilterSet</code> class (allow-list <code>fields</code> mapping, multiple filter
-surfaces per model, custom declared filters) and compound types —
-<code>list[scalar]</code> (<code>has</code>, <code>has_any</code>, <code>has_all</code>, <code>len__*</code>, <code>empty</code>), nested
-models via dotted paths, <code>dict</code> with enumerated keys, and <code>list[Nested]</code>
-element matching via <code>elem</code> → <code>$elemMatch</code>. Tracked in
+<h2 id="coming-next">Coming next<a class="headerlink" href="#coming-next" title="Permanent link">&para;</a></h2>
+<p>The rest of Stage 3, in strictly additive checkpoint releases: nested
+Pydantic models via dotted paths (<code>address__city__contains</code>) in <strong><code>v0.1.2</code></strong>;
+<code>list[NestedModel]</code> element matching via <code>elem</code> → <code>$elemMatch</code> and <code>dict</code>
+fields with enumerated keys in <strong><code>v0.1.3</code></strong>; and the <code>FilterSet</code> class
+(allow-list <code>fields</code> mapping, multiple filter surfaces per model, custom
+declared filters) capping the stage in <strong><code>v0.2.0</code></strong>. Tracked in
 <a href="../design/05-roadmap-and-release/">design doc 05 — Roadmap &amp; Release Plan</a>.</p>
 
 

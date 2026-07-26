@@ -1264,8 +1264,10 @@ differ.</p>
 <li><code>Filterable(sortable=False)</code> removes the field from the sortable set even
   though it stays filterable. Like <code>ops.NONE</code>, it is final: listing the
   field in <code>FilterConfig.sortable</code> raises a <code>ConfigurationError</code>.</li>
-<li><code>Filterable(sortable=True)</code> adds the field even when it isn't filterable —
-  combine it with <code>ops.NONE</code> for a <strong>sort-only</strong> field:</li>
+<li><code>Filterable(sortable=True)</code> adds the field even when it isn't sortable by
+  default — combine it with <code>ops.NONE</code> for a <strong>sort-only</strong> field, or use it
+  to deliberately opt in an array (<code>list[T]</code>) field, which is otherwise
+  never sortable:</li>
 </ul>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="n">joined</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="n">date</span><span class="p">,</span> <span class="n">Filterable</span><span class="p">(</span><span class="n">ops</span><span class="o">=</span><span class="n">ops</span><span class="o">.</span><span class="n">NONE</span><span class="p">,</span> <span class="n">sortable</span><span class="o">=</span><span class="kc">True</span><span class="p">)]</span>
 </span></code></pre></div>

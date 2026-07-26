@@ -443,6 +443,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#array-fields" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Array fields
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#safety-by-default" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -1045,6 +1056,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#array-fields" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Array fields
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#safety-by-default" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -1158,6 +1180,33 @@ families:</p>
 <p>List-valued operators (<code>in</code>, <code>nin</code>) accept <strong>both</strong> comma-joined values and
 repeated keys, and each element is coerced to the field's type — so
 <code>age__in=abc</code> still returns a clean <code>422</code>, the same as any other bad value.</p>
+<h2 id="array-fields">Array fields<a class="headerlink" href="#array-fields" title="Permanent link">&para;</a></h2>
+<p><code>list[T]</code> and <code>set[T]</code> fields (any supported scalar element type) get their
+own operator family, about <strong>membership and shape</strong>:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="k">class</span><span class="w"> </span><span class="nc">User</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>    <span class="n">name</span><span class="p">:</span> <span class="nb">str</span>
+</span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>    <span class="n">tags</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
+</span></code></pre></div>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>?tags__has=python                   # array contains this element
+</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>?tags__has_any=python,rust          # any-of (comma-joined or repeated keys)
+</span><span id="__span-6-3"><a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>?tags__has_all=python,rust          # all-of
+</span><span id="__span-6-4"><a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>?tags__len__eq=3                    # array length
+</span><span id="__span-6-5"><a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>?tags__len__gte=2                   # length comparisons (full tier, opt-in)
+</span><span id="__span-6-6"><a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a>?tags__empty=false                  # non-empty array
+</span></code></pre></div>
+<p><code>?tags__has=python&amp;tags__len__eq=3</code> compiles to:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="p">{</span><span class="s2">&quot;tags&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;$eq&quot;</span><span class="p">:</span> <span class="s2">&quot;python&quot;</span><span class="p">,</span> <span class="s2">&quot;$size&quot;</span><span class="p">:</span> <span class="mi">3</span><span class="p">}}</span>
+</span></code></pre></div>
+<p>Array fields deliberately do <strong>not</strong> get the element type's scalar
+operators — <code>tags__contains</code> would be ambiguous (substring of an element,
+or membership?), so it simply doesn't exist. Each <code>has_*</code> value is coerced
+to the element type, and the same <code>max_list_length</code> guard that protects
+<code>in</code>/<code>nin</code> caps <code>has_any</code>/<code>has_all</code>.</p>
+<p>Two Mongo traps are pinned down for you (details in the
+<a href="../../reference/operators/#arrays-of-scalars-listt-sett">Operator Reference</a>):
+<code>empty</code> distinguishes <em>empty</em> from <em>missing</em> — a missing field matches
+neither <code>empty=true</code> nor <code>empty=false</code> — and array fields are <strong>not
+sortable by default</strong> (opt in per field with <code>Filterable(sortable=True)</code>).</p>
 <h2 id="safety-by-default">Safety by default<a class="headerlink" href="#safety-by-default" title="Permanent link">&para;</a></h2>
 <p>Some operators are gated because they're expensive or dangerous on an
 unindexed collection:</p>

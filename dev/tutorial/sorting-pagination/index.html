@@ -1081,9 +1081,11 @@ descending order.</p>
 </span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="c1"># -&gt; [(&quot;age&quot;, -1), (&quot;name&quot;, 1)]</span>
 </span></code></pre></div>
 <p>Only fields marked <strong>sortable</strong> are accepted — by default, the same set of
-fields that are filterable. Sorting on a field outside that allow-list is
-rejected, which prevents an endpoint from accidentally allowing sorts on
-unindexed fields.</p>
+fields that are filterable, except array (<code>list[T]</code> / <code>set[T]</code>) fields,
+which are never sortable unless opted in (sorting on a Mongo array uses
+min/max element semantics, which surprises people). Sorting on a field
+outside that allow-list is rejected, which prevents an endpoint from
+accidentally allowing sorts on unindexed fields.</p>
 <h2 id="pagination">Pagination<a class="headerlink" href="#pagination" title="Permanent link">&para;</a></h2>
 <p>The default pagination strategy is <code>offset</code> / <code>limit</code>, which maps directly
 to Mongo's <code>skip</code>/<code>limit</code>:</p>
