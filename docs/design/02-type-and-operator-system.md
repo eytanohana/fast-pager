@@ -71,15 +71,21 @@ This is where the design earns its keep. The user explicitly called out
 ### `list[T]` / `set[T]` (arrays of scalars)
 
 An array field needs operators about **membership and shape**, which are distinct
-from scalar operators. We expose a curated set:
+from scalar operators. We expose a curated set, tiered like everything else:
 
-| Operator | Meaning | Mongo compilation |
-|---|---|---|
-| `has` | array contains this element | `{tags: "x"}` (Mongo matches scalar against array) |
-| `has_any` | contains any of these | `{tags: {$in: [...]}}` |
-| `has_all` | contains all of these | `{tags: {$all: [...]}}` |
-| `len` (`len__gte`, etc.) | array length comparison | `{tags: {$size: n}}` / `$expr` for ranges |
-| `empty` | is empty / non-empty | see precise spec below |
+| Operator | Meaning | Tier | Mongo compilation |
+|---|---|---|---|
+| `has` | array contains this element | `safe` | `{tags: "x"}` (Mongo matches scalar against array) |
+| `has_any` | contains any of these | `safe` | `{tags: {$in: [...]}}` |
+| `has_all` | contains all of these | `safe` | `{tags: {$all: [...]}}` |
+| `len__eq` | array length equals | `safe` | `{tags: {$size: n}}` |
+| `empty` | is empty / non-empty | `safe` | see precise spec below |
+| `len__ne`, `len__gt`, `len__gte`, `len__lt`, `len__lte` | array length comparison | `full` | guarded `$expr` (below) |
+
+`len__eq` is `safe` because it compiles to a plain `$size` match, which can use
+an index. The other five `len` comparisons compile to `$expr` — no index
+support, same collection-scan reasoning that gates other `full` operators —
+so they are `full`-tier.
 
 Query forms:
 
@@ -87,9 +93,22 @@ Query forms:
 ?tags__has=python
 ?tags__has_any=python,rust            # any-of
 ?tags__has_all=python,rust            # all-of
-?tags__len__gte=2
+?tags__len__eq=2
+?tags__len__gte=2                     # full tier
 ?tags__empty=false
 ```
+
+**`len` range compilation.** Mongo's aggregation `$size` errors the whole
+query when the field is missing, `null`, or not an array. So the `len__ne`/
+`gt`/`gte`/`lt`/`lte` operators compile to a *guarded* `$expr`:
+
+```json
+{"$expr": {"$gte": [{"$size": {"$cond": [{"$isArray": "$tags"}, "$tags", []]}}, 2]}}
+```
+
+The `$cond`/`$isArray` guard falls back to `[]` for anything that isn't an
+array, so a missing/null/non-array value counts as length 0 instead of
+failing the query.
 
 Precise `empty` semantics (empty-vs-missing is a classic Mongo trap, so we pin
 it down):
@@ -105,8 +124,14 @@ it down):
 > Design choice: we do **not** silently apply scalar string operators
 > (`contains`) to `list[str]` — `tags__contains` would be ambiguous (substring of
 > an element? membership?). Array fields get array operators. Element-level
-> substring matching is an explicit, named, `full`-tier operator
-> (`tags__has_substr`) so the intent is unmistakable.
+> substring matching would be an explicit, named, `full`-tier operator
+> (`tags__has_substr`) so the intent is unmistakable — **designed here, not
+> shipped in Phase 3a**; the shipped array profile is exactly the table above.
+
+By default, array fields are **not sortable**, even when filterable — Mongo
+sorts arrays by their min/max element, which is rarely what anyone means by
+"sort by tags." Opt in deliberately with `Filterable(sortable=True)` on the
+field or by naming it in `FilterConfig(sortable=[...])`.
 
 ### Nested Pydantic models (embedded documents)
 
@@ -126,6 +151,23 @@ notation:
 ?address__city__contains=ams      # field path = address.city, op = contains
 ```
 
+**The embedding field itself** (`address`, as opposed to its leaves) exposes
+no operators of its own — filtering happens on the leaves — except the
+nullability pair when it is `Optional`: `address__isnull`/`address__exists`.
+Other `Filterable` options placed on the embedding field are scoped to that
+field, not the subtree, with one exception:
+
+- `Filterable(ops=ops.NONE)` on `address` excludes the **entire subtree**
+  (the embedding field and every descendant leaf) from the filter surface.
+- `Filterable(source=...)` / `Filterable(param=...)` on `address` rename that
+  one path segment for the whole subtree — every descendant path is composed
+  from the renamed segment.
+- Any other `Filterable` option on `address` (e.g. `sortable=True`) affects
+  only the embedding field's own spec, never its descendants.
+- An explicit `Filterable(ops=[...])` list on a **non-nullable** embedding
+  field is a `ConfigurationError` at registration — there is no operator it
+  could validly name (not even `isnull`, since the field can't be null).
+
 ### Parameter matching (precise — there is no request-time parsing)
 
 Because the entire parameter surface is generated from the model at
@@ -138,7 +180,11 @@ a parameter with that exact name bound to `(("address", "city"), contains)`.
 This makes otherwise-nasty cases non-issues by construction:
 
 - Multi-token operators (`len__gte`, `elem`) — the full spelling is just part
-  of the generated name.
+  of the generated name. Their internal `__` is hardcoded, independent of
+  `FilterConfig.separator`: under `separator="--"`, the generated name is
+  `tags--len__gte` (segment separator `--`, operator spelling untouched).
+  Harmless — the name is still generated exactly, never parsed — but pinned
+  so it isn't "fixed" into an inconsistency later.
 - A field literally named with `__` in it, or a nested field that shares a name
   with an operator (`address.in`) — the generated name is whatever it is;
   collisions between two generated names are detected at registration and
@@ -150,9 +196,20 @@ Generation notes:
 
 - Bare `address__city` (no operator suffix) is emitted as the implicit-`eq`
   parameter for `address.city`.
-- **Recursion depth is bounded** (default 2 levels) and configurable, to keep
-  the generated parameter surface finite and the docs readable.
-- Cycles (self-referential models) are detected and truncated at the depth limit.
+- **Recursion depth is bounded** (default 2 levels, `FilterConfig(max_depth=N)`)
+  and configurable, to keep the generated parameter surface finite and the
+  docs readable. The precise, shipped semantics: `max_depth` counts the
+  embedded-model boundaries a field's path *crosses* — `address__city` is 1,
+  `address__geo__lat` is 2. A field whose path crosses more boundaries than
+  the bound allows is silently skipped. A nested model sitting **exactly** at
+  the bound still gets its own spec (so a nullable embedding keeps its
+  `isnull`/`exists`) but none of its children. `max_depth=0` disables
+  nested-model traversal entirely — only top-level scalar/array fields are
+  generated.
+- Cycles (self-referential and mutually-recursive models) terminate **by
+  construction**: recursion depth strictly increases on every descent, so the
+  depth bound above is what truncates them — no separate cycle detection is
+  needed.
 
 ### `list[NestedModel]` (arrays of embedded documents)
 
@@ -211,6 +268,22 @@ it explicit (annotate it, or pick a concrete type via `FilterSet`).
   and `Filterable(source=...)` each override one side independently, so the
   resolution order is: public name = `param` → alias → field name; source
   name = `source` → alias → field name.
+- **Nested paths compose segment by segment.** Each level of a nested model
+  resolves its own public/source name independently by the rule above, and
+  the two paths are joined separately: the public path with `separator`
+  (`address__city`), the source path with `.` (`address.city`). Renaming one
+  segment (e.g. `Filterable(source="addr")` on the embedding field) only
+  changes that segment; descendants still compose normally on top of it
+  (`addr.city`).
+- **`FilterConfig.exclude` is path-based, not string-based.** An entry
+  matches a field's full public path prefix by segment (`exclude=["address"]`
+  removes `address` and its whole subtree), never by literal string
+  prefixing — so a top-level field that happens to be named
+  `"address__city"` is unaffected by an `exclude=["address"]` entry naming
+  the nested subtree. The same rule applies to `FilterConfig.operators` and
+  `FilterConfig.sortable`: all three are keyed by the field's public,
+  `separator`-joined dotted-param spelling (`"address__city"`), the same
+  spelling a client would use in the URL.
 - **Explicit source override** for when the Mongo field differs from the model:
 
   ```python
