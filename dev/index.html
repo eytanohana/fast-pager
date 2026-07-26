@@ -1043,13 +1043,12 @@ parameters — automatically.</strong></p>
 and generates <strong>type-safe query parameters</strong> for filtering, sorting and
 pagination. Those parameters show up in your OpenAPI docs for free, and
 compile down to a real database query (MongoDB first, more backends later).</p>
-<div class="admonition warning">
-<p class="admonition-title">Targeting the v0.1 release</p>
-<p><code>fast-pager</code> is under active development — the current PyPI release is a
-<code>0.0.x</code> placeholder. Everything on this site describes the <strong>upcoming
-<code>v0.1.0</code></strong> API as specified in the <a href="design/">design documents</a> and
-the <a href="https://github.com/eytanohana/fast-pager/blob/main/DEVELOPMENT_PLAN.md">development plan</a>.
-See the <a href="changelog/">Changelog</a> for the current, real status.</p>
+<div class="admonition info">
+<p class="admonition-title">Shipped and installable</p>
+<p>Everything on this site describes the <strong>shipped <code>0.1.0</code> API</strong> — install
+it from PyPI and it works as documented. <code>fast-pager</code> is still pre-1.0:
+per <a href="https://semver.org/">SemVer</a>, breaking changes bump the minor
+version and are called out in the <a href="changelog/">Changelog</a>.</p>
 </div>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="k">class</span><span class="w"> </span><span class="nc">User</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>    <span class="n">name</span><span class="p">:</span> <span class="nb">str</span>
@@ -1145,9 +1144,11 @@ want full control).</p>
 </ul>
 </div>
 <h2 id="project-status">Project status<a class="headerlink" href="#project-status" title="Permanent link">&para;</a></h2>
-<p><code>fast-pager</code> is in the <strong>design phase</strong> — see the
+<p><code>fast-pager</code> is under <strong>active development</strong>. The <code>0.1.0</code> release ships
+Stages 1–2 in full — zero-config scalar filtering, the Mongo compiler,
+sorting and pagination, and per-field <code>Filterable(...)</code> control. See the
 <a href="https://github.com/eytanohana/fast-pager#status">README</a> for the current
-state and the <a href="changelog/">Changelog</a> for what has actually shipped.</p>
+state and the <a href="changelog/">Changelog</a> for what each version shipped.</p>
 
 
 

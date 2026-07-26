@@ -1063,13 +1063,14 @@
 
 
 <h1 id="operator-reference">Operator Reference<a class="headerlink" href="#operator-reference" title="Permanent link">&para;</a></h1>
-<div class="admonition warning">
-<p class="admonition-title">Targeting v0.1.0 — scalar types only</p>
-<p><code>v0.1.0</code> supports the <strong>scalar types</strong> below. Compound types — <code>list[T]</code>,
-nested Pydantic models, <code>dict[str, T]</code> and arrays of nested models — are
-designed (see <a href="../../design/02-type-and-operator-system/">design doc 02</a>)
-but land in <strong><code>v0.3.0</code></strong> together with <code>FilterSet</code>. This page tracks the
-scalar tables only; it will grow compound-type tables once those ship.</p>
+<div class="admonition note">
+<p class="admonition-title">Scalar types only (for now)</p>
+<p>The current release supports the <strong>scalar types</strong> below. Compound types —
+<code>list[T]</code>, nested Pydantic models, <code>dict[str, T]</code> and arrays of nested
+models — are designed (see
+<a href="../../design/02-type-and-operator-system/">design doc 02</a>) but land in
+<strong><code>v0.2.0</code></strong> together with <code>FilterSet</code>. This page tracks the scalar
+tables only; it will grow compound-type tables once those ship.</p>
 </div>
 <p>Every operator set below is the <em>default</em> for its type — the <strong><code>safe</code></strong>
 profile. Operators listed under <strong><code>full</code></strong> are additional operators

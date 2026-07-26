@@ -1559,8 +1559,12 @@ it explicit (annotate it, or pick a concrete type via <code>FilterSet</code>).</
 <hr />
 <h2 id="field-db-name-mapping-and-aliases">Field → DB-name mapping and aliases<a class="headerlink" href="#field-db-name-mapping-and-aliases" title="Permanent link">&para;</a></h2>
 <ul>
-<li><strong>Pydantic aliases</strong> are respected: if a field has <code>alias="userName"</code>, the
-  query parameter uses the public name; the compiled query uses the source name.</li>
+<li><strong>Pydantic aliases</strong> are respected: an alias (e.g. <code>alias="userName"</code>)
+  defaults <strong>both</strong> names at once — the query parameter is named after the
+  alias and the compiled query targets the alias too. <code>Filterable(param=...)</code>
+  and <code>Filterable(source=...)</code> each override one side independently, so the
+  resolution order is: public name = <code>param</code> → alias → field name; source
+  name = <code>source</code> → alias → field name.</li>
 <li><strong>Explicit source override</strong> for when the Mongo field differs from the model:</li>
 </ul>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="n">age</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">Filterable</span><span class="p">(</span><span class="n">source</span><span class="o">=</span><span class="s2">&quot;ageYears&quot;</span><span class="p">)]</span>
@@ -1595,16 +1599,37 @@ design provides four layers, from coarse to fine, each overriding the previous:<
 </span><span id="__span-9-3"><a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a><span class="n">score</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">Filterable</span><span class="p">(</span><span class="n">ops</span><span class="o">=</span><span class="n">ops</span><span class="o">.</span><span class="n">ALL</span><span class="p">)]</span>          <span class="c1"># everything int supports</span>
 </span></code></pre></div>
 <ol>
-<li><strong>Per-field in a <code>FilterSet</code>.</strong> Wins over everything; also where you put
-   custom/computed filters.</li>
+<li><strong>Per-field on the route.</strong> Wins over everything, including the field's own
+   <code>Filterable(ops=...)</code> — the route has the final say over its own surface.
+   The shipped spelling is the route-level mapping, keyed by public parameter
+   name:</li>
 </ol>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-10-1"><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="k">class</span><span class="w"> </span><span class="nc">UserFilter</span><span class="p">(</span><span class="n">FilterSet</span><span class="p">):</span>
-</span><span id="__span-10-2"><a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>    <span class="k">class</span><span class="w"> </span><span class="nc">Meta</span><span class="p">:</span>
-</span><span id="__span-10-3"><a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>        <span class="n">model</span> <span class="o">=</span> <span class="n">User</span>
-</span><span id="__span-10-4"><a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a>        <span class="n">fields</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;contains&quot;</span><span class="p">],</span> <span class="s2">&quot;age&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;gte&quot;</span><span class="p">,</span> <span class="s2">&quot;lte&quot;</span><span class="p">]}</span>
-</span><span id="__span-10-5"><a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a>    <span class="c1"># custom filter not derivable from a single field:</span>
-</span><span id="__span-10-6"><a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a>    <span class="n">active_since</span> <span class="o">=</span> <span class="n">DateFilter</span><span class="p">(</span><span class="n">field</span><span class="o">=</span><span class="s2">&quot;last_login&quot;</span><span class="p">,</span> <span class="n">op</span><span class="o">=</span><span class="s2">&quot;gte&quot;</span><span class="p">)</span>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-10-1"><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="n">FilterConfig</span><span class="p">(</span><span class="n">operators</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;startswith&quot;</span><span class="p">],</span> <span class="s2">&quot;age&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;gte&quot;</span><span class="p">,</span> <span class="s2">&quot;lte&quot;</span><span class="p">]})</span>
 </span></code></pre></div>
+<p>A <code>FilterSet</code>'s <code>fields</code> mapping (Stage 3) occupies this same layer, and is
+   also where custom/computed filters live:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-11-1"><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="k">class</span><span class="w"> </span><span class="nc">UserFilter</span><span class="p">(</span><span class="n">FilterSet</span><span class="p">):</span>
+</span><span id="__span-11-2"><a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>    <span class="k">class</span><span class="w"> </span><span class="nc">Meta</span><span class="p">:</span>
+</span><span id="__span-11-3"><a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a>        <span class="n">model</span> <span class="o">=</span> <span class="n">User</span>
+</span><span id="__span-11-4"><a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a>        <span class="n">fields</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;contains&quot;</span><span class="p">],</span> <span class="s2">&quot;age&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;gte&quot;</span><span class="p">,</span> <span class="s2">&quot;lte&quot;</span><span class="p">]}</span>
+</span><span id="__span-11-5"><a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a>    <span class="c1"># custom filter not derivable from a single field:</span>
+</span><span id="__span-11-6"><a id="__codelineno-11-6" name="__codelineno-11-6" href="#__codelineno-11-6"></a>    <span class="n">active_since</span> <span class="o">=</span> <span class="n">DateFilter</span><span class="p">(</span><span class="n">field</span><span class="o">=</span><span class="s2">&quot;last_login&quot;</span><span class="p">,</span> <span class="n">op</span><span class="o">=</span><span class="s2">&quot;gte&quot;</span><span class="p">)</span>
+</span></code></pre></div>
+<p>Two rules pin down how the ladder interacts with the safety gates (settled by
+the implementation, now normative):</p>
+<ul>
+<li><strong><code>ops.NONE</code> and <code>sortable=False</code> are absolute.</strong> They sit outside the
+  ladder: a config that tries to override them — naming an <code>ops.NONE</code> field in
+  <code>FilterConfig.operators</code>, or a <code>sortable=False</code> field in
+  <code>FilterConfig.sortable</code> — raises <code>ConfigurationError</code> at registration.
+  Route-level config can never quietly resurrect a field the model opted out;
+  a model-level opt-out is a security posture, not a default.</li>
+<li><strong>Explicit operator lists bypass the <code>allow_regex</code> gate.</strong> Listing <code>"regex"</code>
+  in <code>FilterConfig.operators</code>, in <code>Filterable(ops=[...])</code>, or in a
+  <code>type_profiles</code> entry is the eyes-open opt-in and needs no extra flag. The
+  tier profiles remain gated: <code>ops.ALL</code> and the <code>safe</code>/<code>full</code> default profile
+  emit <code>regex</code> only with <code>FilterConfig(allow_regex=True)</code>.</li>
+</ul>
 <h3 id="allow-list-vs-deny-list-semantics">Allow-list vs deny-list semantics<a class="headerlink" href="#allow-list-vs-deny-list-semantics" title="Permanent link">&para;</a></h3>
 <ul>
 <li>In <strong>Option C (zero-config)</strong> the model is an implicit <em>allow-list by type</em>:

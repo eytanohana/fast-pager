@@ -905,6 +905,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#010-first-minor-release-stages-12-finalized" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        <code>0.1.0</code> — first minor release: Stages 1–2 finalized
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#003-stage-2-checkpoint-per-field-control" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -938,10 +949,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#coming-in-v010" class="md-nav__link">
+  <a href="#coming-in-v020" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Coming in <code>v0.1.0</code>
+        Coming in <code>v0.2.0</code>
       </span>
     </span>
   </a>
@@ -997,6 +1008,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#010-first-minor-release-stages-12-finalized" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        <code>0.1.0</code> — first minor release: Stages 1–2 finalized
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#003-stage-2-checkpoint-per-field-control" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -1030,10 +1052,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#coming-in-v010" class="md-nav__link">
+  <a href="#coming-in-v020" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Coming in <code>v0.1.0</code>
+        Coming in <code>v0.2.0</code>
       </span>
     </span>
   </a>
@@ -1064,6 +1086,14 @@ unstable API, and breaking changes bump the minor version and are called out
 below. See the <a href="../design/05-roadmap-and-release/">Roadmap</a> for what's coming
 next, and the <a href="https://github.com/eytanohana/fast-pager/blob/main/DEVELOPMENT_PLAN.md">development plan</a>
 for the execution detail behind each stage.</p>
+<h2 id="010-first-minor-release-stages-12-finalized"><code>0.1.0</code> — first minor release: Stages 1–2 finalized<a class="headerlink" href="#010-first-minor-release-stages-12-finalized" title="Permanent link">&para;</a></h2>
+<p>Stages 1–2 are complete and consolidated: the core filter → sort → paginate
+pipeline, the MongoDB query compiler, zero-config <code>FilterQuery[Model]</code> /
+<code>FilterDepends(Model)</code> for scalar fields, per-field <code>Filterable(...)</code>
+control, per-type profiles, strict mode, and this documentation site. No
+functional changes from <code>0.0.3</code> — this release is the polish milestone:
+every page on this site now describes exactly the shipped, installable API,
+with the "not released yet" caveats retired.</p>
 <h2 id="003-stage-2-checkpoint-per-field-control"><code>0.0.3</code> — Stage 2 checkpoint: per-field control<a class="headerlink" href="#003-stage-2-checkpoint-per-field-control" title="Permanent link">&para;</a></h2>
 <p>The filter surface is now curatable. <code>Annotated[T, Filterable(...)]</code>
 metadata on the model controls each field: <code>ops=[...]</code> for an exact operator
@@ -1095,13 +1125,12 @@ the repository has CI + fully automated release tooling
 (<code>scripts/release.sh</code>, tag-triggered PyPI publish via Trusted Publishing),
 but <strong>no library functionality yet</strong>. Nothing in this documentation site is
 installable against <code>0.0.1</code> — see <a href="../getting-started/">Getting Started</a>.</p>
-<h2 id="coming-in-v010">Coming in <code>v0.1.0</code><a class="headerlink" href="#coming-in-v010" title="Permanent link">&para;</a></h2>
-<p>Stages 1–2 finalized: the core filter → sort → paginate pipeline, the
-MongoDB query compiler, zero-config <code>FilterQuery[Model]</code> /
-<code>FilterDepends(Model)</code> for scalar fields, per-field <code>Filterable(...)</code>
-control, per-type profiles, strict mode, and this documentation site —
-polished, with the docs describing exactly the shipped API. Most of the
-content on this site describes this upcoming release. Tracked in
+<h2 id="coming-in-v020">Coming in <code>v0.2.0</code><a class="headerlink" href="#coming-in-v020" title="Permanent link">&para;</a></h2>
+<p>Stage 3: the <code>FilterSet</code> class (allow-list <code>fields</code> mapping, multiple filter
+surfaces per model, custom declared filters) and compound types —
+<code>list[scalar]</code> (<code>has</code>, <code>has_any</code>, <code>has_all</code>, <code>len__*</code>, <code>empty</code>), nested
+models via dotted paths, <code>dict</code> with enumerated keys, and <code>list[Nested]</code>
+element matching via <code>elem</code> → <code>$elemMatch</code>. Tracked in
 <a href="../design/05-roadmap-and-release/">design doc 05 — Roadmap &amp; Release Plan</a>.</p>
 
 
