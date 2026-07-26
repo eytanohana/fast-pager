@@ -24,3 +24,6 @@ htmlcov/
 .idea/
 .vscode/
 .DS_Store
+
+# Claude Code (local settings, agent worktrees)
+.claude/
