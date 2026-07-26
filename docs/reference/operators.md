@@ -4,14 +4,15 @@ icon: lucide/table
 
 # Operator Reference
 
-!!! note "Scalars, arrays of scalars, and nested models (for now)"
+!!! note "The full compound-type surface"
     The current release supports the **scalar types** below, **arrays of
-    scalars** (`list[T]` / `set[T]`), and **nested Pydantic models** via
-    dotted paths. The remaining compound types are designed (see
-    [design doc 02](../design/02-type-and-operator-system.md)) and land in
-    phased releases: arrays of nested models and `dict[str, T]` keys in
-    **`v0.1.3`**, and `FilterSet` in **`v0.2.0`**. This page grows a table
-    per type as each ships.
+    scalars** (`list[T]` / `set[T]`), **nested Pydantic models** via dotted
+    paths, **arrays of nested models** (`list[NestedModel]` via `elem` →
+    `$elemMatch`), and **`dict[str, T]` maps** (explicitly enabled, key
+    presence + enumerated keys). That completes the type tables of
+    [design doc 02](../design/02-type-and-operator-system.md); the
+    `FilterSet` class (allow-list filter surfaces per model) lands in
+    **`v0.2.0`**.
 
 Every operator set below is the *default* for its type — the **`safe`**
 profile. Operators listed under **`full`** are additional operators
@@ -180,8 +181,124 @@ The rules, precisely:
   because matching is exact, a literal field named `address__city` and a
   nested `address.city` path that generate the same parameter name raise a
   `ConfigurationError` at registration naming both sources.
-- `list[NestedModel]` element matching (`elem` → `$elemMatch`) ships in
-  `v0.1.3`.
+
+## Arrays of nested models — `list[NestedModel]`
+
+A field whose type is a *list of* Pydantic models gets element matching via
+the **`elem`** path segment:
+
+```python
+class Order(BaseModel):
+    amount: float
+    status: Literal["paid", "refunded"]
+
+class User(BaseModel):
+    name: str
+    orders: list[Order]
+```
+
+```text
+?orders__elem__amount__gte=100&orders__elem__status=refunded
+```
+
+compiles to a **single `$elemMatch`**:
+
+```python
+{"orders": {"$elemMatch": {"amount": {"$gte": 100.0}, "status": "refunded"}}}
+```
+
+!!! warning "Same-element vs. independent conditions — the `$elemMatch` surprise"
+    This is the whole point of the `elem` token, and it is where Mongo
+    surprises people most. **All conditions on the same `orders__elem__...`
+    prefix in one request must hold for the *same* array element** — the
+    query above finds users with *one order* that is both ≥ 100 **and**
+    refunded.
+
+    Mongo's *default* array-matching semantics are the opposite:
+    `{"orders.amount": {"$gte": 100}, "orders.status": "refunded"}` matches
+    a user whose ≥-100 order and refunded order are **different elements**.
+    `fast-pager` deliberately does **not** generate those independent
+    dotted-path parameters for arrays of models — if a request names an
+    `elem` path, you get same-element semantics, always. (Independent
+    conditions across *different* array fields remain independent: each
+    array field gets its own `$elemMatch`.)
+
+The rules, precisely:
+
+- **`elem` parameters are `full`-tier as a whole** — precisely because of
+  the subtlety above (design doc 02). Under the default `safe` profile no
+  `elem` parameters are generated; opt in with
+  `FilterConfig(default_profile="full")`, with `Filterable(ops=[...])` on
+  the element model's field, or with a `FilterConfig(operators=
+  {"orders__elem__amount": [...]})` entry naming the `elem` path.
+- **Fields inside the element get their normal operator surface** (scalar
+  operators, the array family for a `list[T]` inside the element,
+  `Filterable` renames — `source=` composes *relatively*: inside
+  `$elemMatch`, keys are relative to the element). One exception:
+  `text_search` is collection-level and never applies inside elements —
+  explicitly configuring it on an `elem` path is a `ConfigurationError`.
+- **The array field itself gets the shape operators** — `len__eq` / `empty`
+  (`safe`) and the `len` comparisons (`full`), compiled exactly as for
+  [arrays of scalars](#arrays-of-scalars-listt-sett) — plus
+  `isnull`/`exists` when `Optional`. It does **not** get
+  `has`/`has_any`/`has_all` (element equality against whole documents is
+  not expressible through typed query parameters), and there is no bare
+  `?orders=` parameter. A shape condition and an `elem` group on the same
+  field merge: `{"orders": {"$size": 2, "$elemMatch": {...}}}`.
+- **The `elem` hop counts as one `max_depth` boundary**, exactly like an
+  embedding: with the default `max_depth=2`, `orders__elem__amount` (1) and
+  `orders__elem__items__elem__qty` (2, a nested array inside the element)
+  are generated. Cycles truncate at the bound, as for embeddings.
+- **`elem` paths are never sortable.** "Sort users by the amount of an
+  order" has no per-document meaning; naming an `elem` path in
+  `FilterConfig(sortable=[...])` is a `ConfigurationError`, and
+  `Filterable(sortable=True)` on an element model's field is ignored for
+  its `elem` uses.
+- **Subtree opt-out works as for embeddings**: `Filterable(ops=ops.NONE)`
+  on the `list[NestedModel]` field (or `FilterConfig(exclude=["orders"])`)
+  removes the field and every `elem` descendant;
+  `exclude=["orders__elem__amount"]` removes a single element field.
+
+## Maps — `dict[str, T]`
+
+Free-form maps clash with a core promise — every parameter is
+pre-generated, typed, and documented in OpenAPI — so support is
+deliberately narrow, and **maps are not filterable by default**: a plain
+`dict[str, T]` field generates nothing. A `Filterable` annotation enables
+it:
+
+```python
+class User(BaseModel):
+    metadata: Annotated[dict[str, str], Filterable(keys=["region", "tier"])]
+    counters: Annotated[dict[str, int], Filterable()]
+    attrs: dict[str, str]          # no annotation → not filterable
+```
+
+| Parameter | Enabled by | Value | Mongo compilation |
+|---|---|---|---|
+| `metadata__has_key=region` | any `Filterable(...)` on the field | the key name (`str`, whatever `T` is) | `{"metadata.region": {"$exists": true}}` |
+| `metadata__region=emea` | only keys enumerated in `Filterable(keys=[...])` | typed as `T`, implicit `eq` only | `{"metadata.region": "emea"}` |
+
+- **`has_key` values are sanitized.** The key is user input inserted into a
+  backend field path, so keys that are empty or contain `.`, `$`, or null
+  bytes are rejected with a standard 422 (and the Mongo compiler re-checks
+  and raises for direct AST users — defense in depth). The same rule
+  applies, at registration time, to the keys listed in
+  `Filterable(keys=[...])`.
+- **Value-at-key parameters exist only for enumerated keys** — there is no
+  request-time `metadata__<anything>`; un-enumerated spellings are unknown
+  parameters (a 422 in strict mode). Each enumerated key gets a typed,
+  `eq`-only parameter (`metadata__region` / `metadata__region__eq`);
+  configuring any other operator on it is a `ConfigurationError`. Richer
+  per-key operator sets may come with `FilterSet`.
+- **Type constraints are enforced at registration**: `Filterable` on a bare
+  `dict`, a non-`str` key type, or an unsupported value type raises
+  `ConfigurationError`, as does `Filterable(keys=[...])` on a non-map field.
+- **Maps are not sortable by default** (and expose no bare `?metadata=`
+  parameter). An enumerated key path may be opted into sorting via
+  `FilterConfig(sortable=["metadata__region"])` — it compiles to the dotted
+  `metadata.region`. `Optional[dict[str, T]]` adds `isnull` (`safe`) and
+  `exists` (`full`).
 
 ## Operator semantics
 
@@ -199,6 +316,7 @@ The rules, precisely:
 | `text_search` | single | `name__text_search=alice` | Mongo `$text` over a text index (requires backend capability) |
 | `isnull` | bool | `email__isnull=true` | `{"email": null}` |
 | `exists` | bool | `email__exists=false` | `{"email": {"$exists": false}}` |
+| `has_key` | single (the key name) | `metadata__has_key=region` | `{"metadata.region": {"$exists": true}}` — key sanitized, see [Maps](#maps-dictstr-t) |
 
 List-value operators (`in`, `nin`, and the array operators `has_any` /
 `has_all`) accept both comma-joined values and repeated query keys; each

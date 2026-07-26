@@ -10,6 +10,36 @@ below. See the [Roadmap](design/05-roadmap-and-release.md) for what's coming
 next, and the [development plan](https://github.com/eytanohana/fast-pager/blob/main/DEVELOPMENT_PLAN.md)
 for the execution detail behind each stage.
 
+## `0.1.3` — Stage 3 checkpoint: arrays of nested models + maps
+
+The compound-type tables of design doc 02 are now complete. **Arrays of
+nested models** (`list[NestedModel]`) get element matching via the `elem`
+path segment: every condition sharing an `orders__elem__` prefix in one
+request compiles into a **single `$elemMatch`** — same-element semantics
+(`?orders__elem__amount__gte=100&orders__elem__status=refunded` finds one
+order that is both), the loudly-documented opposite of Mongo's independent
+dotted-path default. `elem` parameters are **full-tier** given that
+subtlety (generated under `default_profile="full"` or an explicit
+per-field/per-route operator opt-in); the array field itself keeps the
+safe-tier shape operators (`len__*`/`empty`, reusing the 3a compilation)
+plus `isnull`/`exists` when `Optional`; the `elem` hop counts as one
+`max_depth` boundary exactly like an embedding; `elem` paths are never
+sortable; `text_search` never applies inside elements. **Maps**
+(`dict[str, T]`) stay unfilterable by default; a `Filterable` annotation
+enables `has_key` (key presence, with the key — request input inserted
+into a field path — rejected with a 422 when it contains `.`, `$`, or null
+bytes), and `Filterable(keys=["region"])` additionally generates typed,
+`eq`-only value-at-key parameters (`?metadata__region=emea` →
+`{"metadata.region": "emea"}`). Unsupported map shapes (non-`str` keys,
+unsupported value types) with a `Filterable` raise `ConfigurationError` at
+registration, as does `keys=` on a non-map field. Strictly additive: no
+behavior changes to anything shipped in `0.1.2`. See the new
+[arrays-of-nested-models](reference/operators.md#arrays-of-nested-models-listnestedmodel)
+and [maps](reference/operators.md#maps-dictstr-t) sections of the Operator
+Reference and the matching
+[tutorial sections](tutorial/filtering.md#arrays-of-nested-models).
+100% test coverage, `mypy --strict` clean.
+
 ## `0.1.2` — Stage 3 checkpoint: nested models
 
 Nested Pydantic models (embedded documents) are now filterable by **dotted
@@ -103,9 +133,8 @@ installable against `0.0.1` — see [Getting Started](getting-started.md).
 
 ## Coming next
 
-The rest of Stage 3, in strictly additive checkpoint releases:
-`list[NestedModel]` element matching via `elem` → `$elemMatch` and `dict`
-fields with enumerated keys in **`v0.1.3`**; and the `FilterSet` class
-(allow-list `fields` mapping, multiple filter surfaces per model, custom
-declared filters) capping the stage in **`v0.2.0`**. Tracked in
+The `FilterSet` class caps Stage 3 in **`v0.2.0`**: an allow-list `fields`
+mapping per filter surface, multiple filter surfaces per model, and custom
+declared filters — plus a non-trivial example app (users + addresses +
+tags + orders) exercised in CI. Tracked in
 [design doc 05 — Roadmap & Release Plan](design/05-roadmap-and-release.md).

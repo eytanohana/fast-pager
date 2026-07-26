@@ -200,6 +200,76 @@ Full rules — segment naming, collision detection, embedding-field
 `Filterable` semantics — are in the
 [Operator Reference](../reference/operators.md#nested-pydantic-models-embedded-documents).
 
+## Arrays of nested models
+
+A `list[NestedModel]` field gets **element matching** via the `elem` path
+segment:
+
+```python
+class Order(BaseModel):
+    amount: float
+    status: Literal["paid", "refunded"]
+
+class User(BaseModel):
+    name: str
+    orders: list[Order]
+```
+
+```text
+?orders__elem__amount__gte=100&orders__elem__status=refunded
+```
+
+compiles to a **single `$elemMatch`** — both conditions must hold for the
+**same order**:
+
+```python
+{"orders": {"$elemMatch": {"amount": {"$gte": 100.0}, "status": "refunded"}}}
+```
+
+That same-element guarantee is the whole point, and it is the opposite of
+what raw Mongo dotted paths do (`{"orders.amount": ..., "orders.status":
+...}` lets *different* elements satisfy each condition — a classic
+surprise). Every condition sharing an `orders__elem__` prefix in one
+request joins the same `$elemMatch`; distinct array fields each get their
+own.
+
+Because same-element semantics are subtle, **`elem` parameters are
+full-tier**: they are generated only under
+`FilterConfig(default_profile="full")` or an explicit per-field
+(`Filterable(ops=[...])` on the element model's field) or per-route
+(`FilterConfig(operators={"orders__elem__amount": [...]})`) opt-in. The
+array field itself keeps the safe-tier **shape** operators
+(`orders__len__eq=2`, `orders__empty=false`) but no membership family, and
+`elem` paths are **never sortable**. The `elem` hop counts as one
+`max_depth` level, like an embedding. Full rules in the
+[Operator Reference](../reference/operators.md#arrays-of-nested-models-listnestedmodel).
+
+## Maps
+
+`dict[str, T]` fields are **not filterable by default** — a free-form key
+set can't be pre-generated, typed, and documented. A `Filterable`
+annotation enables the narrow, safe surface:
+
+```python
+class User(BaseModel):
+    metadata: Annotated[dict[str, str], Filterable(keys=["region", "tier"])]
+    counters: Annotated[dict[str, int], Filterable()]
+    attrs: dict[str, str]               # stays unfilterable
+```
+
+```text
+?metadata__has_key=region            # {"metadata.region": {"$exists": true}}
+?metadata__region=emea               # {"metadata.region": "emea"} (typed, eq only)
+?counters__has_key=visits            # any Filterable() enables has_key
+```
+
+`has_key` is always available on an enabled map; typed value-at-key
+parameters exist **only** for the keys enumerated in
+`Filterable(keys=[...])` — `metadata__plan=pro` is simply an unknown
+parameter. Because a `has_key` value is inserted into a backend field path,
+keys containing `.`, `$`, or null bytes are rejected with a 422. Details in
+the [Operator Reference](../reference/operators.md#maps-dictstr-t).
+
 ## Safety by default
 
 Some operators are gated because they're expensive or dangerous on an
