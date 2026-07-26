@@ -19,7 +19,7 @@ site_author = "Eytan Ohana"
 
 # Canonical URL once deployed to GitHub Pages (org.github.io/repo/ form).
 # https://zensical.org/docs/setup/basics/#site_url
-site_url = "https://eytanohana.github.io/fast-pager/"
+site_url = "https://fast-pager.eytanohana.com/"
 
 copyright = """
 Copyright &copy; 2026 Eytan Ohana

@@ -180,13 +180,13 @@ version" banner and `latest` doesn't.
 
 ### URL scheme
 
-- `https://eytanohana.github.io/fast-pager/` — redirects to whatever `mike
+- `https://fast-pager.eytanohana.com/` — redirects to whatever `mike
   set-default` last pointed at (`latest`).
-- `https://eytanohana.github.io/fast-pager/latest/` — alias for the newest
+- `https://fast-pager.eytanohana.com/latest/` — alias for the newest
   tagged release.
-- `https://eytanohana.github.io/fast-pager/X.Y.Z/` — one directory per
+- `https://fast-pager.eytanohana.com/X.Y.Z/` — one directory per
   released version (e.g. `/0.1.0/`).
-- `https://eytanohana.github.io/fast-pager/dev/` — tracks `main`, rebuilt on
+- `https://fast-pager.eytanohana.com/dev/` — tracks `main`, rebuilt on
   every push. Useful for previewing unreleased docs changes, but not linked
   from the version selector's "latest" alias and not the default redirect
   target.
@@ -260,7 +260,7 @@ The version selector dropdown **is supported** by Zensical 0.0.51 via the
   the root redirect at it.
 
 The deployed site is served at
-**https://eytanohana.github.io/fast-pager/**, which matches the `site_url`
+**https://fast-pager.eytanohana.com/**, which matches the `site_url`
 configured in `zensical.toml`.
 
 !!! warning "One manual repo setting required"
