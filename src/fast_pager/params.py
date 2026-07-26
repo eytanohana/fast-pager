@@ -134,12 +134,24 @@ def _is_unfilterable(spec: FieldSpec) -> bool:
     return spec.filterable is not None and spec.filterable.ops is OpsMarker.NONE
 
 
+def _is_excluded(spec: FieldSpec, exclude: frozenset[str]) -> bool:
+    """Whether ``config.exclude`` names the field or any of its ancestors.
+
+    Matching is by path prefix, not string prefix, so excluding a nested
+    subtree by its embedding field's name (``"address"``) never catches a
+    literal top-level field that happens to be named ``"address__city"``.
+    """
+    return any(spec.separator.join(spec.path[: i + 1]) in exclude for i in range(len(spec.path)))
+
+
 def _validated_ops(names: tuple[str, ...], spec: FieldSpec, where: str) -> tuple[str, ...]:
     """Validate an explicit operator list for one field, with rich errors."""
     valid = all_operators_for(spec.py_type, spec.nullable, spec.container)
     tname = type_name(spec.py_type)
     if spec.container is Container.LIST:
         tname = f"list[{tname}]"
+    elif spec.container is Container.NESTED:
+        tname = f"nested model {tname}"
     for op_name in names:
         if op_name not in DEFAULT_REGISTRY:
             raise ConfigurationError(
@@ -149,7 +161,8 @@ def _validated_ops(names: tuple[str, ...], spec: FieldSpec, where: str) -> tuple
         if op_name not in valid:
             raise ConfigurationError(
                 f"operator {op_name!r} is not valid for field {spec.public_name!r} of "
-                f"type {tname} in {where}; valid operators for {tname}: {', '.join(valid)}"
+                f"type {tname} in {where}; valid operators for {tname}: "
+                f"{', '.join(valid) or '(none)'}"
             )
     return names
 
@@ -187,7 +200,10 @@ def _ops_for_spec(spec: FieldSpec, config: FilterConfig) -> tuple[Operator, ...]
     Array (``LIST``) fields resolve against the array operator profile;
     ``type_profiles`` entries never apply to them — a per-type profile lists
     *scalar* operators for a scalar type, not membership/shape operators for
-    arrays of that element type.
+    arrays of that element type. Embedding (``NESTED``) fields expose only
+    the nullability operators (when nullable); ``type_profiles`` never
+    apply to them either — but they *do* apply to the scalar leaf fields
+    inside a nested model, exactly as at top level.
 
     Raises :class:`ConfigurationError` when an explicitly configured operator
     is unknown or not valid for the field's type.
@@ -291,7 +307,9 @@ def _resolve_params(
                 # Bare equality: `?name=x` is sugar for `name__eq=x`.
                 names.append(spec.public_name)
             for url_name in names:
-                origin = f"field {spec.public_name!r}, operator {op.name!r}"
+                origin = (
+                    f"field {spec.public_name!r} (source {spec.source!r}), operator {op.name!r}"
+                )
                 if url_name in seen:
                     raise ConfigurationError(
                         f"generated parameter name collision on {url_name!r}: "
@@ -316,7 +334,8 @@ def _validate_config_fields(
 
     Config entries are keyed by *public* parameter names — a field renamed
     with ``Filterable(param=...)`` is referenced by its param name, an
-    aliased field by its alias.
+    aliased field by its alias, and a nested field by its full public
+    spelling (``"address__city"``).
     """
     known = public_field_names(model) | {s.public_name for s in specs}
     filterable = {s.public_name for s in specs if not _is_unfilterable(s)}
@@ -351,9 +370,11 @@ def _resolve_sortable(
     """The sortable field set: config allow-list × per-field overrides.
 
     With no ``FilterConfig.sortable`` allow-list, the default is "sortable
-    iff filterable" for scalar fields — array fields are *not* sortable by
-    default (sorting on Mongo array fields uses min/max element semantics,
-    which surprises people) — plus fields forced in with
+    iff filterable" for scalar fields — nested scalar leaves included, by
+    their public name (``sort=-address__city``) — while array and embedding
+    fields are *not* sortable by default (sorting on Mongo array fields
+    uses min/max element semantics, and sorting by a whole subdocument is
+    rarely what anyone means) — plus fields forced in with
     ``Filterable(sortable=True)`` (which can make an ``ops.NONE`` field
     sort-only, or an array field sortable, eyes open), minus fields opted
     out with ``Filterable(sortable=False)``. When the allow-list *is* given
@@ -444,9 +465,10 @@ def build_plan(model: type[BaseModel], config: FilterConfig) -> QueryPlan:
     cached = _PLAN_CACHE.get(key)
     if cached is not None:
         return cached
-    all_specs = introspect_model(model)
+    all_specs = introspect_model(model, separator=config.separator, max_depth=config.max_depth)
     _validate_config_fields(model, all_specs, config)
-    visible = tuple(s for s in all_specs if s.public_name not in set(config.exclude))
+    exclude = frozenset(config.exclude)
+    visible = tuple(s for s in all_specs if not _is_excluded(s, exclude))
     filterable_specs = tuple(s for s in visible if not _is_unfilterable(s))
     params = _resolve_params(filterable_specs, config)
     sortable = _resolve_sortable(model, visible, filterable_specs, config)

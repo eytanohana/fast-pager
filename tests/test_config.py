@@ -25,6 +25,7 @@ def test_defaults_are_safe():
         {"max_list_length": 0},
         {"max_filters": 0},
         {"default_limit": 200, "max_limit": 100},
+        {"max_depth": -1},
     ],
 )
 def test_invalid_config_raises(kwargs):
@@ -65,6 +66,13 @@ def test_unknown_params_mode_validated():
     assert FilterConfig(unknown_params="strict").unknown_params == "strict"
     with pytest.raises(ConfigurationError, match="unknown_params"):
         FilterConfig(unknown_params="loose")
+
+
+def test_max_depth_default_and_zero():
+    assert FilterConfig().max_depth == 2
+    assert FilterConfig(max_depth=0).max_depth == 0  # nested traversal disabled
+    assert FilterConfig(max_depth=2) == FilterConfig()
+    assert FilterConfig(max_depth=3) != FilterConfig()
 
 
 def test_config_hash_covers_type_profiles_and_unknown_params():

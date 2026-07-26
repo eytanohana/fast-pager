@@ -1,12 +1,12 @@
 """Tests for parameter generation, config-time errors, and memoization."""
 
-from typing import Annotated
+from typing import Annotated, Optional
 
 import pytest
 from pydantic import BaseModel, ValidationError
 
-from conftest import Curated, Tagged, User
-from fast_pager import ConfigurationError, FilterConfig, Filterable
+from conftest import Address, Curated, Customer, Tagged, User
+from fast_pager import ConfigurationError, FilterConfig, Filterable, ops
 from fast_pager.params import build_plan
 
 
@@ -449,3 +449,183 @@ def test_filterable_sortable_true_forces_an_array_field_sortable():
 def test_config_sortable_allow_list_may_name_an_array_field():
     plan = build_plan(Tagged, FilterConfig(sortable=["tags"]))
     assert plan.sortable == frozenset({"tags"})
+
+
+# ---------------------------------------------------------------------------
+# Phase 3b: nested Pydantic models.
+# ---------------------------------------------------------------------------
+
+
+def test_nested_params_generated_with_exact_dotted_spellings():
+    names = url_names(build_plan(Customer, FilterConfig()))
+    assert {"address__city", "address__city__eq", "address__city__contains"} <= names
+    assert {"address__geo__lat", "address__geo__lat__gte"} <= names
+    assert "address__zip_code__startswith" in names
+
+
+def test_nested_array_field_gets_the_array_operator_family():
+    plan = build_plan(Customer, FilterConfig())
+    assert names_for(plan, "address__tags") == {
+        "address__tags__has",
+        "address__tags__has_any",
+        "address__tags__has_all",
+        "address__tags__len__eq",
+        "address__tags__empty",
+    }
+
+
+def test_nullable_embedding_gets_isnull_non_nullable_gets_no_params():
+    safe = url_names(build_plan(Customer, FilterConfig()))
+    full = url_names(build_plan(Customer, FilterConfig(default_profile="full")))
+    assert "billing__isnull" in safe and "billing__exists" not in safe
+    assert "billing__exists" in full
+    assert "address__isnull" not in full  # non-nullable embedding
+    assert "address" not in safe and "billing" not in safe  # no bare-eq sugar
+
+
+def test_children_of_a_nullable_embedding_behave_normally():
+    names = url_names(build_plan(Customer, FilterConfig()))
+    assert {"billing__city__contains", "billing__geo__lat__gte"} <= names
+
+
+def test_max_depth_config_bounds_the_parameter_surface():
+    one = url_names(build_plan(Customer, FilterConfig(max_depth=1)))
+    assert "address__city" in one
+    assert "address__geo__lat" not in one
+    zero = url_names(build_plan(Customer, FilterConfig(max_depth=0)))
+    assert "billing__isnull" in zero  # the embedding itself is a root field
+    assert "address__city" not in zero
+
+
+def test_ops_none_on_embedding_removes_the_subtree_from_the_surface():
+    class M(BaseModel):
+        name: str
+        address: Annotated[Address, Filterable(ops=ops.NONE)]
+
+    plan = build_plan(M, FilterConfig())
+    assert names_for(plan, "address") == set()
+    assert not any(n.startswith("address__") for n in url_names(plan))
+    assert "address__city" not in plan.sortable
+
+
+def test_ops_none_embedding_cannot_be_configured_in_operators():
+    class M(BaseModel):
+        address: Annotated[Optional[Address], Filterable(ops=ops.NONE)] = None
+
+    with pytest.raises(ConfigurationError, match=r"'address'.*ops\.NONE"):
+        build_plan(M, FilterConfig(operators={"address": ["isnull"]}))
+
+
+def test_operators_config_keyed_by_the_dotted_public_spelling():
+    plan = build_plan(Customer, FilterConfig(operators={"address__city": ["contains"]}))
+    assert names_for(plan, "address__city") == {"address__city__contains"}
+
+
+def test_operators_on_a_non_nullable_embedding_raise_with_empty_valid_set():
+    with pytest.raises(
+        ConfigurationError,
+        match=r"'isnull' is not valid for field 'address' of type nested model Address.*\(none\)",
+    ):
+        build_plan(Customer, FilterConfig(operators={"address": ["isnull"]}))
+
+
+def test_operators_on_a_nullable_embedding_allow_nullability_ops():
+    plan = build_plan(Customer, FilterConfig(operators={"billing": ["exists"]}))
+    names = url_names(plan)
+    assert "billing__exists" in names and "billing__isnull" not in names
+    assert "billing__city" in names  # children are configured independently
+
+
+def test_filterable_ops_list_on_embedding_field_is_validated():
+    class M(BaseModel):
+        address: Annotated[Address, Filterable(ops=["isnull"])]
+
+    with pytest.raises(ConfigurationError, match=r"nested model Address.*\(none\)"):
+        build_plan(M, FilterConfig())
+
+    class M2(BaseModel):
+        billing: Annotated[Optional[Address], Filterable(ops=["isnull"])] = None
+
+    names = url_names(build_plan(M2, FilterConfig()))
+    assert "billing__isnull" in names
+    assert "billing__city" in names  # ops on the embedding never touch children
+
+
+def test_exclude_a_nested_leaf_and_a_whole_subtree():
+    plan = build_plan(Customer, FilterConfig(exclude=["address__city", "billing"]))
+    names = url_names(plan)
+    assert "address__city" not in names and "address__city__eq" not in names
+    assert "address__zip_code" in names  # siblings untouched
+    assert not any(n == "billing" or n.startswith("billing__") for n in names)
+    assert "billing__city" not in plan.sortable
+
+
+def test_exclude_matches_path_prefixes_not_string_prefixes():
+    class M(BaseModel):
+        address: Address
+        address__city: str  # a literal field name containing the separator
+
+    plan = build_plan(M, FilterConfig(exclude=["address"]))
+    names = url_names(plan)
+    assert "address__city" in names  # the literal field survives
+    assert "address__zip_code" not in names  # the nested subtree is gone
+
+
+def test_nested_name_collision_with_literal_field_names_both_sources():
+    class M(BaseModel):
+        address: Address
+        address__city: str
+
+    with pytest.raises(
+        ConfigurationError,
+        match=r"collision on 'address__city__eq'.*source 'address__city'.*source 'address\.city'",
+    ):
+        build_plan(M, FilterConfig())
+
+
+def test_type_profiles_apply_to_nested_scalar_leaves():
+    plan = build_plan(Customer, FilterConfig(type_profiles={str: ["eq", "icontains"]}))
+    assert names_for(plan, "address__city") == {
+        "address__city",
+        "address__city__eq",
+        "address__city__icontains",
+    }
+    # Element-type profiles still never apply to array fields, nested or not.
+    assert "address__tags__icontains" not in url_names(plan)
+    assert "address__tags__has" in url_names(plan)
+
+
+def test_nested_leaves_sortable_by_default_embeddings_and_arrays_not():
+    plan = build_plan(Customer, FilterConfig())
+    assert {"address__city", "address__geo__lat", "billing__city"} <= plan.sortable
+    assert "address" not in plan.sortable
+    assert "address__tags" not in plan.sortable
+
+
+def test_config_sortable_may_name_nested_fields():
+    plan = build_plan(Customer, FilterConfig(sortable=["address__city"]))
+    assert plan.sortable == frozenset({"address__city"})
+
+
+def test_filterable_sortable_false_on_a_nested_leaf_is_final():
+    class Inner(BaseModel):
+        secret: Annotated[str, Filterable(sortable=False)]
+
+    class M(BaseModel):
+        inner: Inner
+
+    assert "inner__secret" not in build_plan(M, FilterConfig()).sortable
+    with pytest.raises(ConfigurationError, match=r"'inner__secret'.*sortable=False"):
+        build_plan(M, FilterConfig(sortable=["inner__secret"]))
+
+
+def test_sources_map_nested_public_names_to_dotted_sources():
+    plan = build_plan(Customer, FilterConfig())
+    assert plan.sources["address__city"] == "address.city"
+    assert plan.sources["address__zip_code"] == "address.zip"
+    assert plan.sources["address__geo__lat"] == "address.geo.lat"
+
+
+def test_custom_separator_applies_to_nested_paths():
+    names = url_names(build_plan(Customer, FilterConfig(separator="_")))
+    assert "address_city_contains" in names and "address__city__contains" not in names

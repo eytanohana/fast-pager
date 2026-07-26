@@ -26,7 +26,8 @@ class FilterConfig:
             profile, ``regex`` params are only generated when this is true
             (or when ``regex`` is listed explicitly in ``operators``).
         operators: Optional per-field operator allow-list, keyed by the
-            field's public (query-parameter) name. The finest layer: it beats
+            field's public (query-parameter) name — nested fields by their
+            full public spelling (``"address__city"``). The finest layer: it beats
             field-level ``Filterable(ops=...)``, per-type ``type_profiles``,
             and the global profile — except ``Filterable(ops=ops.NONE)``,
             which is final. Unknown fields or operators invalid for the
@@ -46,11 +47,25 @@ class FilterConfig:
             parameter: ``"ignore"`` (default) drops it silently; ``"strict"``
             returns a standard 422 naming the parameter. Parameters *without*
             the separator are never rejected — they may belong to the route.
-        exclude: Public field names to leave out of the filter surface.
+        exclude: Public field names to leave out of the filter surface —
+            nested fields by their full public spelling (``"address__city"``).
+            Naming an embedding field (``"address"``) excludes its whole
+            subtree.
         sortable: Allow-list of sortable public field names. ``None`` means
             "same as the filterable fields", adjusted by any per-field
             ``Filterable(sortable=...)`` overrides.
-        separator: Token between field name and operator in parameter names.
+        separator: Token between field name and operator in parameter names
+            (and between the segments of a nested path: ``address__city``).
+        max_depth: How many nested-model levels below the root model filter
+            generation descends into — the number of embedded-model
+            boundaries a field's path may cross. With the default ``2``,
+            ``address__city`` (1 level) and ``address__geo__lat`` (2 levels)
+            are generated; deeper fields are silently skipped. A nested
+            model sitting exactly at the bound still gets its own
+            parameters (``isnull`` when nullable) but none of its children.
+            ``0`` disables nested-model traversal entirely. The bound also
+            truncates self-referential models, keeping the parameter
+            surface finite.
         default_limit: ``limit`` value when the client does not send one.
         max_limit: Upper bound on ``limit``; larger values are a 422.
         max_list_length: Cap on elements in list-valued params (``in``/...).
@@ -65,6 +80,7 @@ class FilterConfig:
     exclude: Sequence[str] = ()
     sortable: Sequence[str] | None = None
     separator: str = "__"
+    max_depth: int = 2
     default_limit: int = 50
     max_limit: int = 100
     max_list_length: int = 100
@@ -78,6 +94,8 @@ class FilterConfig:
             )
         if not self.separator:
             raise ConfigurationError("separator must be a non-empty string")
+        if self.max_depth < 0:
+            raise ConfigurationError(f"max_depth must be >= 0, got {self.max_depth!r}")
         for name in ("default_limit", "max_limit", "max_list_length", "max_filters"):
             if getattr(self, name) < 1:
                 raise ConfigurationError(f"{name} must be >= 1, got {getattr(self, name)!r}")
@@ -133,6 +151,7 @@ class FilterConfig:
             tuple(self.exclude),
             None if self.sortable is None else tuple(self.sortable),
             self.separator,
+            self.max_depth,
             self.default_limit,
             self.max_limit,
             self.max_list_length,
