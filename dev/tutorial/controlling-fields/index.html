@@ -18,7 +18,7 @@
         <link rel="prev" href="../sorting-pagination/">
       
       
-        <link rel="next" href="../../reference/operators/">
+        <link rel="next" href="../filtersets/">
       
       
         
@@ -576,6 +576,35 @@
   
 </nav>
       
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../filtersets/" class="md-nav__link">
+        
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-list-checks" viewBox="0 0 24 24"><path d="M13 5h8M13 12h8M13 19h8M3 17l2 2 4-4M3 7l2 2 4-4"/></svg>
+  
+  <span class="md-ellipsis">
+    
+  
+  FilterSets: allow-list filter surfaces
+
+    
+  </span>
+  
+  
+
+      </a>
     </li>
   
 
@@ -1320,7 +1349,9 @@ non-nullable fields.</p>
 </tr>
 </tbody>
 </table>
-<p>Two absolutes sit outside the ladder: <code>Filterable(ops=ops.NONE)</code> and
+<p>A <a href="../filtersets/"><code>FilterSet</code></a>'s <code>fields</code> mapping occupies the same layer 4
+(and replaces <code>FilterConfig.operators</code> on FilterSet routes). Two absolutes
+sit outside the ladder: <code>Filterable(ops=ops.NONE)</code> and
 <code>Filterable(sortable=False)</code> cannot be overridden by any config — model-level
 opt-outs are a security posture, not a default.</p>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-9-1"><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="k">class</span><span class="w"> </span><span class="nc">User</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
@@ -1361,7 +1392,10 @@ reject requests that use them. Rename the parameter or stay on
 <code>"ignore"</code> for that route.</p>
 </div>
 <h2 id="next">Next<a class="headerlink" href="#next" title="Permanent link">&para;</a></h2>
-<p>The <a href="../../reference/operators/">Operator Reference</a> lists every operator
+<p>When curating with <code>Filterable</code> and <code>FilterConfig</code> stops being enough —
+public APIs, multiple filter surfaces per model — graduate to an allow-list
+<a href="../filtersets/"><code>FilterSet</code></a>. The
+<a href="../../reference/operators/">Operator Reference</a> lists every operator
 each type supports — the vocabulary <code>ops=[...]</code> and <code>type_profiles</code> draw
 from. For the design rationale behind the layering, see
 <a href="../../design/02-type-and-operator-system/#per-field-configurability-the-core-question-you-asked">design doc 02</a>.</p>

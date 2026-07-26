@@ -12,13 +12,13 @@
         <meta name="author" content="Eytan Ohana">
       
       
-        <link rel="canonical" href="https://fast-pager.eytanohana.com/dev/tutorial/sorting-pagination/">
+        <link rel="canonical" href="https://fast-pager.eytanohana.com/dev/tutorial/filtersets/">
       
       
-        <link rel="prev" href="../filtering/">
+        <link rel="prev" href="../controlling-fields/">
       
       
-        <link rel="next" href="../controlling-fields/">
+        <link rel="next" href="../../reference/operators/">
       
       
         
@@ -29,7 +29,7 @@
     
     
       
-        <title>Sorting & Pagination - fast-pager</title>
+        <title>FilterSets: allow-list filter surfaces - fast-pager</title>
       
     
     
@@ -85,7 +85,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#sorting-pagination" class="md-skip">
+        <a href="#filtersets-allow-list-filter-surfaces" class="md-skip">
           Skip to content
         </a>
       
@@ -125,7 +125,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Sorting &amp; Pagination
+              FilterSets: allow-list filter surfaces
             
           </span>
         </div>
@@ -373,38 +373,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-arrow-up-down" viewBox="0 0 24 24"><path d="m21 16-4 4-4-4M17 20V4M3 8l4-4 4 4M7 4v16"/></svg>
-  
-  <span class="md-ellipsis">
-    
-  
-  Sorting &amp; Pagination
-
-    
-  </span>
-  
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="././" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../sorting-pagination/" class="md-nav__link">
         
   
   
@@ -421,71 +393,6 @@
   
 
       </a>
-      
-        
-
-
-<nav class="md-nav md-nav--secondary" aria-label="On this page">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      On this page
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#sorting" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Sorting
-      </span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#pagination" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Pagination
-      </span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#optional-a-paginated-response-envelope" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Optional: a paginated response envelope
-      </span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#next" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Next
-      </span>
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -524,10 +431,38 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../filtersets/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-list-checks" viewBox="0 0 24 24"><path d="M13 5h8M13 12h8M13 19h8M3 17l2 2 4-4M3 7l2 2 4-4"/></svg>
+  
+  <span class="md-ellipsis">
+    
+  
+  FilterSets: allow-list filter surfaces
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="././" class="md-nav__link md-nav__link--active">
         
   
   
@@ -544,6 +479,82 @@
   
 
       </a>
+      
+        
+
+
+<nav class="md-nav md-nav--secondary" aria-label="On this page">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      On this page
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#the-fields-mapping-is-a-strict-allow-list" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        The <code>fields</code> mapping is a strict allow-list
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#where-a-filterset-sits-in-the-precedence-ladder" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Where a FilterSet sits in the precedence ladder
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#meta-in-full" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        <code>Meta</code> in full
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#custom-declared-filters" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Custom declared filters
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#public-vs-admin-two-surfaces-one-model" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Public vs. admin: two surfaces, one model
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -1030,10 +1041,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#sorting" class="md-nav__link">
+  <a href="#the-fields-mapping-is-a-strict-allow-list" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Sorting
+        The <code>fields</code> mapping is a strict allow-list
       </span>
     </span>
   </a>
@@ -1041,10 +1052,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#pagination" class="md-nav__link">
+  <a href="#where-a-filterset-sits-in-the-precedence-ladder" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Pagination
+        Where a FilterSet sits in the precedence ladder
       </span>
     </span>
   </a>
@@ -1052,10 +1063,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#optional-a-paginated-response-envelope" class="md-nav__link">
+  <a href="#meta-in-full" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Optional: a paginated response envelope
+        <code>Meta</code> in full
       </span>
     </span>
   </a>
@@ -1063,10 +1074,21 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#next" class="md-nav__link">
+  <a href="#custom-declared-filters" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Next
+        Custom declared filters
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#public-vs-admin-two-surfaces-one-model" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Public vs. admin: two surfaces, one model
       </span>
     </span>
   </a>
@@ -1091,75 +1113,148 @@
   
 
 
-<h1 id="sorting-pagination">Sorting &amp; Pagination<a class="headerlink" href="#sorting-pagination" title="Permanent link">&para;</a></h1>
-<p>Sorting and pagination ride on the same <code>FilterDepends(...)</code> dependency as
-filtering — they're the other two hats a list endpoint wears (see
-<a href="../../design/00-overview/#why-the-name-is-fast-pager">the overview</a>), so they
-share the same <code>q</code> object instead of being separate dependencies to wire up.</p>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>GET /users?sort=-age,name&amp;limit=20&amp;offset=40
+<h1 id="filtersets-allow-list-filter-surfaces">FilterSets: allow-list filter surfaces<a class="headerlink" href="#filtersets-allow-list-filter-surfaces" title="Permanent link">&para;</a></h1>
+<p>Zero-config filtering exposes every supported field; <code>Filterable</code> and
+<code>FilterConfig</code> let you curate that surface. A <strong><code>FilterSet</code></strong> flips the
+model: instead of opting fields <em>out</em>, you declare a class that opts fields
+<em>in</em> — and everything not listed simply is not filterable. This is the
+"pro" tier of <a href="../../design/01-developer-experience/">design doc 01</a> (Option
+B), built for public APIs and for serving <strong>multiple filter surfaces from
+one model</strong>.</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">fast_pager</span><span class="w"> </span><span class="kn">import</span> <span class="n">FilterDepends</span><span class="p">,</span> <span class="n">FilterQuery</span><span class="p">,</span> <span class="n">FilterSet</span>
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="k">class</span><span class="w"> </span><span class="nc">UserFilter</span><span class="p">(</span><span class="n">FilterSet</span><span class="p">):</span>
+</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>    <span class="k">class</span><span class="w"> </span><span class="nc">Meta</span><span class="p">:</span>
+</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>        <span class="n">model</span> <span class="o">=</span> <span class="n">User</span>
+</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>        <span class="n">fields</span> <span class="o">=</span> <span class="p">{</span>
+</span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>            <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;contains&quot;</span><span class="p">,</span> <span class="s2">&quot;startswith&quot;</span><span class="p">],</span>
+</span><span id="__span-0-8"><a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>            <span class="s2">&quot;age&quot;</span><span class="p">:</span>  <span class="p">[</span><span class="s2">&quot;gte&quot;</span><span class="p">,</span> <span class="s2">&quot;lte&quot;</span><span class="p">],</span>
+</span><span id="__span-0-9"><a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>            <span class="c1"># fields omitted here are NOT filterable</span>
+</span><span id="__span-0-10"><a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>        <span class="p">}</span>
+</span><span id="__span-0-11"><a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>
+</span><span id="__span-0-12"><a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a><span class="nd">@app</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/users&quot;</span><span class="p">)</span>
+</span><span id="__span-0-13"><a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">list_users</span><span class="p">(</span><span class="n">q</span><span class="p">:</span> <span class="n">FilterQuery</span><span class="p">[</span><span class="n">User</span><span class="p">]</span> <span class="o">=</span> <span class="n">FilterDepends</span><span class="p">(</span><span class="n">UserFilter</span><span class="p">)):</span>
+</span><span id="__span-0-14"><a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>    <span class="k">return</span> <span class="k">await</span> <span class="n">db</span><span class="o">.</span><span class="n">users</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="n">q</span><span class="o">.</span><span class="n">to_mongo</span><span class="p">())</span><span class="o">.</span><span class="n">to_list</span><span class="p">(</span><span class="kc">None</span><span class="p">)</span>
 </span></code></pre></div>
-<h2 id="sorting">Sorting<a class="headerlink" href="#sorting" title="Permanent link">&para;</a></h2>
-<p><code>sort</code> is a comma-separated list of field names; a leading <code>-</code> means
-descending order.</p>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>?sort=-age           # age descending
-</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>?sort=age             # age ascending
-</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>?sort=-age,name       # age descending, then name ascending as a tiebreaker
-</span></code></pre></div>
-<p>This compiles to:</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="n">q</span><span class="o">.</span><span class="n">sort_mongo</span><span class="p">()</span>
-</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="c1"># -&gt; [(&quot;age&quot;, -1), (&quot;name&quot;, 1)]</span>
-</span></code></pre></div>
-<p>Only fields marked <strong>sortable</strong> are accepted — by default, the same set of
-fields that are filterable, except array (<code>list[T]</code> / <code>set[T]</code>) fields,
-which are never sortable unless opted in (sorting on a Mongo array uses
-min/max element semantics, which surprises people). Sorting on a field
-outside that allow-list is rejected, which prevents an endpoint from
-accidentally allowing sorts on unindexed fields.</p>
-<h2 id="pagination">Pagination<a class="headerlink" href="#pagination" title="Permanent link">&para;</a></h2>
-<p>The default pagination strategy is <code>offset</code> / <code>limit</code>, which maps directly
-to Mongo's <code>skip</code>/<code>limit</code>:</p>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>?limit=20&amp;offset=40
-</span></code></pre></div>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="n">q</span><span class="o">.</span><span class="n">skip</span>   <span class="c1"># -&gt; 40</span>
-</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="n">q</span><span class="o">.</span><span class="n">limit</span>  <span class="c1"># -&gt; 20</span>
-</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>
-</span><span id="__span-4-4"><a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="k">await</span> <span class="n">db</span><span class="o">.</span><span class="n">users</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="n">q</span><span class="o">.</span><span class="n">to_mongo</span><span class="p">())</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="n">q</span><span class="o">.</span><span class="n">sort_mongo</span><span class="p">())</span><span class="o">.</span><span class="n">skip</span><span class="p">(</span><span class="n">q</span><span class="o">.</span><span class="n">skip</span><span class="p">)</span><span class="o">.</span><span class="n">limit</span><span class="p">(</span><span class="n">q</span><span class="o">.</span><span class="n">limit</span><span class="p">)</span><span class="o">.</span><span class="n">to_list</span><span class="p">(</span><span class="kc">None</span><span class="p">)</span>
-</span></code></pre></div>
-<p>Two guardrails apply out of the box:</p>
+<p><code>FilterDepends(UserFilter)</code> yields the exact same <code>FilterQuery</code> object as
+<code>FilterDepends(User)</code> — <code>to_ast()</code>, <code>to_mongo()</code>, <code>sort_mongo()</code>, <code>skip</code>,
+<code>limit</code>, <code>applied</code> — so graduating a route from zero-config to a FilterSet
+never changes the call site.</p>
+<h2 id="the-fields-mapping-is-a-strict-allow-list">The <code>fields</code> mapping is a strict allow-list<a class="headerlink" href="#the-fields-mapping-is-a-strict-allow-list" title="Permanent link">&para;</a></h2>
+<p>Keys use the <strong>public dotted-param spelling</strong> — the same names clients type
+in the URL: <code>"name"</code>, <code>"address__city"</code>, <code>"orders__elem__amount"</code>,
+<code>"metadata__region"</code>, and the <code>Filterable(param=...)</code> name for a renamed
+field. Values are exact operator lists, validated against the field's type
+<strong>at class definition</strong> — a typo or a type mismatch fails at import with the
+usual message naming the field, the operator, and the valid alternatives.</p>
+<p>Two things make this the safe posture for public APIs (design doc 02):</p>
 <ul>
-<li><strong><code>default_limit</code></strong> — used when the client omits <code>limit</code>.</li>
-<li><strong><code>max_limit</code></strong> — the hard ceiling; an unbounded <code>limit</code> is never allowed,
-  even if a client asks for one.</li>
+<li><strong>If it's not listed, it's not filterable.</strong> Adding a field to the model
+  can never silently widen the filter surface.</li>
+<li>Listing a nested field (<code>"address__city"</code>) lists <em>exactly that path</em> —
+  there is no subtree wildcard, and listing the embedding field alone does
+  not enable its children.</li>
 </ul>
-<p>A <code>page</code> / <code>page_size</code> strategy (sugar over <code>offset</code>) and keyset/cursor
-pagination are on the roadmap — see
-<a href="../../design/01-developer-experience/#pagination-sorting-first-class-per-the-name">design doc 01</a>
-for the full comparison.</p>
-<h2 id="optional-a-paginated-response-envelope">Optional: a paginated response envelope<a class="headerlink" href="#optional-a-paginated-response-envelope" title="Permanent link">&para;</a></h2>
-<p>By default <code>fast-pager</code> returns just the query — you decide how to shape the
-response. For the common "list + total count" shape, an opt-in helper is
-planned for a later release:</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="nd">@app</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/users&quot;</span><span class="p">,</span> <span class="n">response_model</span><span class="o">=</span><span class="n">Page</span><span class="p">[</span><span class="n">User</span><span class="p">])</span>
-</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">list_users</span><span class="p">(</span><span class="n">q</span><span class="p">:</span> <span class="n">FilterQuery</span><span class="p">[</span><span class="n">User</span><span class="p">]</span> <span class="o">=</span> <span class="n">FilterDepends</span><span class="p">(</span><span class="n">User</span><span class="p">)):</span>
-</span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>    <span class="k">return</span> <span class="k">await</span> <span class="n">q</span><span class="o">.</span><span class="n">paginate</span><span class="p">(</span><span class="n">db</span><span class="o">.</span><span class="n">users</span><span class="p">)</span>
+<p>The value <code>"__all__"</code> (or <code>ops.ALL</code>) means "every operator this field's
+type supports" — still subject to the <code>allow_regex</code> gate, exactly like
+<code>Filterable(ops=ops.ALL)</code>; listing <code>"regex"</code> explicitly is the eyes-open
+opt-in. Listing an <code>elem</code> path is the explicit opt-in for element matching
+(no <code>full</code> profile needed), and enumerated map keys stay <code>eq</code>-only.</p>
+<h2 id="where-a-filterset-sits-in-the-precedence-ladder">Where a FilterSet sits in the precedence ladder<a class="headerlink" href="#where-a-filterset-sits-in-the-precedence-ladder" title="Permanent link">&para;</a></h2>
+<p>The <code>fields</code> mapping occupies <strong>layer 4</strong> of the
+<a href="../controlling-fields/#the-precedence-ladder">operator precedence ladder</a> —
+the same layer as <code>FilterConfig.operators</code>, which it <em>replaces</em> for
+FilterSet routes. It beats field-level <code>Filterable(ops=...)</code>, per-type
+<code>type_profiles</code>, and the global profile. The model-level absolutes remain
+absolute:</p>
+<ul>
+<li>a <code>Filterable(ops=ops.NONE)</code> field cannot be listed — that's a
+  <code>ConfigurationError</code>, not a quiet resurrection;</li>
+<li>a <code>Filterable(sortable=False)</code> field cannot be named in <code>Meta.sortable</code>.</li>
+</ul>
+<p><code>Filterable(source=...)</code> and <code>Filterable(param=...)</code> renames carry over
+unchanged: the mapping is keyed by the public name, and compilation still
+targets the source name.</p>
+<h2 id="meta-in-full"><code>Meta</code> in full<a class="headerlink" href="#meta-in-full" title="Permanent link">&para;</a></h2>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="k">class</span><span class="w"> </span><span class="nc">AdminUserFilter</span><span class="p">(</span><span class="n">FilterSet</span><span class="p">):</span>
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>    <span class="k">class</span><span class="w"> </span><span class="nc">Meta</span><span class="p">:</span>
+</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>        <span class="n">model</span> <span class="o">=</span> <span class="n">User</span>                                  <span class="c1"># required</span>
+</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>        <span class="n">fields</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;__all__&quot;</span><span class="p">,</span> <span class="s2">&quot;age&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;gte&quot;</span><span class="p">,</span> <span class="s2">&quot;lte&quot;</span><span class="p">]}</span>
+</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>        <span class="n">config</span> <span class="o">=</span> <span class="n">FilterConfig</span><span class="p">(</span><span class="n">unknown_params</span><span class="o">=</span><span class="s2">&quot;strict&quot;</span><span class="p">,</span> <span class="n">max_limit</span><span class="o">=</span><span class="mi">500</span><span class="p">)</span>
+</span><span id="__span-1-6"><a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>        <span class="n">sortable</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;name&quot;</span><span class="p">,</span> <span class="s2">&quot;age&quot;</span><span class="p">,</span> <span class="s2">&quot;last_login&quot;</span><span class="p">]</span>
 </span></code></pre></div>
-<div class="language-json highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="p">{</span>
-</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="w">  </span><span class="nt">&quot;items&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="w"> </span><span class="s2">&quot;...&quot;</span><span class="w"> </span><span class="p">],</span>
-</span><span id="__span-6-3"><a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="w">  </span><span class="nt">&quot;total&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">137</span><span class="p">,</span>
-</span><span id="__span-6-4"><a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="w">  </span><span class="nt">&quot;limit&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">20</span><span class="p">,</span>
-</span><span id="__span-6-5"><a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a><span class="w">  </span><span class="nt">&quot;offset&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">40</span>
-</span><span id="__span-6-6"><a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a><span class="p">}</span>
+<ul>
+<li><strong><code>model</code></strong> (required) — the Pydantic model the surface derives from.</li>
+<li><strong><code>fields</code></strong> — the allow-list mapping; defaults to <code>{}</code> (nothing but
+  declared filters, pagination, and sort).</li>
+<li><strong><code>config</code></strong> — a <code>FilterConfig</code> for everything that is <em>not</em> the
+  allow-list: limits, <code>default_profile</code>, <code>allow_regex</code>, <code>type_profiles</code>,
+  strict mode, <code>separator</code>, <code>max_depth</code>. Its <code>operators</code>, <code>exclude</code>, and
+  <code>sortable</code> knobs are <strong>rejected</strong> here — the FilterSet spellings
+  (<code>fields</code>, omission, <code>Meta.sortable</code>) replace them, and accepting both
+  would create two competing sources of truth.</li>
+<li><strong><code>sortable</code></strong> — optional sortable allow-list (it may name fields that
+  are not filterable). Without it the default is <em>sortable iff listed and
+  scalar</em>, plus <code>Filterable(sortable=True)</code> fields, minus
+  <code>Filterable(sortable=False)</code> ones.</li>
+</ul>
+<h2 id="custom-declared-filters">Custom declared filters<a class="headerlink" href="#custom-declared-filters" title="Permanent link">&para;</a></h2>
+<p>Some parameters aren't derivable from a single generated <code>field__op</code> name.
+Declare them as class attributes with <code>Filter</code>:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">fast_pager</span><span class="w"> </span><span class="kn">import</span> <span class="n">Filter</span>
+</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>
+</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="k">class</span><span class="w"> </span><span class="nc">AdminUserFilter</span><span class="p">(</span><span class="n">FilterSet</span><span class="p">):</span>
+</span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>    <span class="k">class</span><span class="w"> </span><span class="nc">Meta</span><span class="p">:</span>
+</span><span id="__span-2-5"><a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>        <span class="n">model</span> <span class="o">=</span> <span class="n">User</span>
+</span><span id="__span-2-6"><a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>        <span class="n">fields</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;contains&quot;</span><span class="p">]}</span>
+</span><span id="__span-2-7"><a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>
+</span><span id="__span-2-8"><a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>    <span class="n">active_since</span> <span class="o">=</span> <span class="n">Filter</span><span class="p">(</span>
+</span><span id="__span-2-9"><a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>        <span class="n">field</span><span class="o">=</span><span class="s2">&quot;last_login&quot;</span><span class="p">,</span>
+</span><span id="__span-2-10"><a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a>        <span class="n">op</span><span class="o">=</span><span class="s2">&quot;gte&quot;</span><span class="p">,</span>
+</span><span id="__span-2-11"><a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a>        <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Users whose last login is on or after this instant.&quot;</span><span class="p">,</span>
+</span><span id="__span-2-12"><a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a>    <span class="p">)</span>
 </span></code></pre></div>
-<p>The exact count is not free on a large collection, so <code>paginate(...)</code> will
-take a <code>total="exact" | "estimated" | "none"</code> knob rather than always
-running a <code>count_documents</code>. This ships in a later stage (see the
-<a href="../../design/05-roadmap-and-release/">roadmap</a>) — <code>to_mongo()</code> /
-<code>sort_mongo()</code> / <code>skip</code> / <code>limit</code> are the shipped building blocks and remain
-available regardless.</p>
-<h2 id="next">Next<a class="headerlink" href="#next" title="Permanent link">&para;</a></h2>
-<p>See the <a href="../../reference/operators/">Operator Reference</a> for every filter
-operator by type, or revisit <a href="../filtering/">Filtering</a> for the <code>field__op</code>
-convention.</p>
+<p>The <strong>attribute name is the public parameter name</strong> (<code>?active_since=...</code>;
+override it with <code>param=</code>). The value type derives from the target field
+and operator — <code>?active_since=banana</code> is a normal 422 — and the condition
+compiles through the standard AST path:
+<code>Condition(field="last_login", op="gte", value=datetime(...))</code>. The target
+field does not have to appear in <code>fields</code> (a declared filter is its own
+opt-in), but <code>ops.NONE</code> fields stay final. Declared filters are inherited:
+a base class without a <code>Meta</code> can hold shared <code>Filter</code> declarations for
+several concrete FilterSets.</p>
+<h2 id="public-vs-admin-two-surfaces-one-model">Public vs. admin: two surfaces, one model<a class="headerlink" href="#public-vs-admin-two-surfaces-one-model" title="Permanent link">&para;</a></h2>
+<p>Because the filter surface lives outside the model, several FilterSets over
+the same model coexist trivially:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="k">class</span><span class="w"> </span><span class="nc">PublicUserFilter</span><span class="p">(</span><span class="n">FilterSet</span><span class="p">):</span>
+</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>    <span class="k">class</span><span class="w"> </span><span class="nc">Meta</span><span class="p">:</span>
+</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>        <span class="n">model</span> <span class="o">=</span> <span class="n">User</span>
+</span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>        <span class="n">fields</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;contains&quot;</span><span class="p">,</span> <span class="s2">&quot;startswith&quot;</span><span class="p">],</span> <span class="s2">&quot;age&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;gte&quot;</span><span class="p">,</span> <span class="s2">&quot;lte&quot;</span><span class="p">]}</span>
+</span><span id="__span-3-5"><a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>
+</span><span id="__span-3-6"><a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a><span class="k">class</span><span class="w"> </span><span class="nc">AdminUserFilter</span><span class="p">(</span><span class="n">FilterSet</span><span class="p">):</span>
+</span><span id="__span-3-7"><a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>    <span class="k">class</span><span class="w"> </span><span class="nc">Meta</span><span class="p">:</span>
+</span><span id="__span-3-8"><a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a>        <span class="n">model</span> <span class="o">=</span> <span class="n">User</span>
+</span><span id="__span-3-9"><a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a>        <span class="n">fields</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;__all__&quot;</span><span class="p">,</span> <span class="s2">&quot;age&quot;</span><span class="p">:</span> <span class="s2">&quot;__all__&quot;</span><span class="p">,</span> <span class="s2">&quot;email&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;eq&quot;</span><span class="p">]}</span>
+</span><span id="__span-3-10"><a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a>        <span class="n">config</span> <span class="o">=</span> <span class="n">FilterConfig</span><span class="p">(</span><span class="n">unknown_params</span><span class="o">=</span><span class="s2">&quot;strict&quot;</span><span class="p">)</span>
+</span><span id="__span-3-11"><a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a>
+</span><span id="__span-3-12"><a id="__codelineno-3-12" name="__codelineno-3-12" href="#__codelineno-3-12"></a>    <span class="n">active_since</span> <span class="o">=</span> <span class="n">Filter</span><span class="p">(</span><span class="n">field</span><span class="o">=</span><span class="s2">&quot;last_login&quot;</span><span class="p">,</span> <span class="n">op</span><span class="o">=</span><span class="s2">&quot;gte&quot;</span><span class="p">)</span>
+</span><span id="__span-3-13"><a id="__codelineno-3-13" name="__codelineno-3-13" href="#__codelineno-3-13"></a>
+</span><span id="__span-3-14"><a id="__codelineno-3-14" name="__codelineno-3-14" href="#__codelineno-3-14"></a><span class="nd">@app</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/users&quot;</span><span class="p">)</span>
+</span><span id="__span-3-15"><a id="__codelineno-3-15" name="__codelineno-3-15" href="#__codelineno-3-15"></a><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">public_users</span><span class="p">(</span><span class="n">q</span><span class="p">:</span> <span class="n">FilterQuery</span><span class="p">[</span><span class="n">User</span><span class="p">]</span> <span class="o">=</span> <span class="n">FilterDepends</span><span class="p">(</span><span class="n">PublicUserFilter</span><span class="p">)):</span> <span class="o">...</span>
+</span><span id="__span-3-16"><a id="__codelineno-3-16" name="__codelineno-3-16" href="#__codelineno-3-16"></a>
+</span><span id="__span-3-17"><a id="__codelineno-3-17" name="__codelineno-3-17" href="#__codelineno-3-17"></a><span class="nd">@app</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/admin/users&quot;</span><span class="p">)</span>
+</span><span id="__span-3-18"><a id="__codelineno-3-18" name="__codelineno-3-18" href="#__codelineno-3-18"></a><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">admin_users</span><span class="p">(</span><span class="n">q</span><span class="p">:</span> <span class="n">FilterQuery</span><span class="p">[</span><span class="n">User</span><span class="p">]</span> <span class="o">=</span> <span class="n">FilterDepends</span><span class="p">(</span><span class="n">AdminUserFilter</span><span class="p">)):</span> <span class="o">...</span>
+</span></code></pre></div>
+<p>Each route documents exactly its own parameters in <code>/docs</code>, and an
+<code>?email=</code> sent to the public route is unknown there — ignored by default, a
+422 under the admin surface's strict mode.</p>
+<p>A FilterSet carries its whole configuration in <code>Meta</code>, so
+<code>FilterDepends(AdminUserFilter, config=...)</code> is ambiguous and raises
+<code>ConfigurationError</code>; a FilterSet subclass without any <code>Meta</code> is <em>abstract</em>
+(useful for shared <code>Filter</code> declarations) and cannot back a route.</p>
+<p>A complete runnable app using all three declaration styles — zero-config,
+<code>Filterable</code>, and a public/admin FilterSet pair — lives in
+<a href="https://github.com/eytanohana/fast-pager/tree/main/examples/mongo_app"><code>examples/mongo_app</code></a>.</p>
 
 
 

@@ -15,7 +15,7 @@
         <link rel="canonical" href="https://fast-pager.eytanohana.com/dev/reference/operators/">
       
       
-        <link rel="prev" href="../../tutorial/controlling-fields/">
+        <link rel="prev" href="../../tutorial/filtersets/">
       
       
         <link rel="next" href="../../design/">
@@ -413,6 +413,35 @@
     
   
   Controlling the filter surface
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorial/filtersets/" class="md-nav__link">
+        
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-list-checks" viewBox="0 0 24 24"><path d="M13 5h8M13 12h8M13 19h8M3 17l2 2 4-4M3 7l2 2 4-4"/></svg>
+  
+  <span class="md-ellipsis">
+    
+  
+  FilterSets: allow-list filter surfaces
 
     
   </span>
@@ -1158,9 +1187,9 @@ scalars</strong> (<code>list[T]</code> / <code>set[T]</code>), <strong>nested Py
 paths, <strong>arrays of nested models</strong> (<code>list[NestedModel]</code> via <code>elem</code> →
 <code>$elemMatch</code>), and <strong><code>dict[str, T]</code> maps</strong> (explicitly enabled, key
 presence + enumerated keys). That completes the type tables of
-<a href="../../design/02-type-and-operator-system/">design doc 02</a>; the
-<code>FilterSet</code> class (allow-list filter surfaces per model) lands in
-<strong><code>v0.2.0</code></strong>.</p>
+<a href="../../design/02-type-and-operator-system/">design doc 02</a>. Allow-list
+filter surfaces per model are covered by the
+<a href="../../tutorial/filtersets/"><code>FilterSet</code> tutorial</a>.</p>
 </div>
 <p>Every operator set below is the <em>default</em> for its type — the <strong><code>safe</code></strong>
 profile. Operators listed under <strong><code>full</code></strong> are additional operators
@@ -1526,8 +1555,9 @@ it:</p>
   request-time <code>metadata__&lt;anything&gt;</code>; un-enumerated spellings are unknown
   parameters (a 422 in strict mode). Each enumerated key gets a typed,
   <code>eq</code>-only parameter (<code>metadata__region</code> / <code>metadata__region__eq</code>);
-  configuring any other operator on it is a <code>ConfigurationError</code>. Richer
-  per-key operator sets may come with <code>FilterSet</code>.</li>
+  configuring any other operator on it is a <code>ConfigurationError</code>. The rule
+  is the same in a <a href="../../tutorial/filtersets/"><code>FilterSet</code></a>: an enumerated
+  key path may be allow-listed, but stays <code>eq</code>-only.</li>
 <li><strong>Type constraints are enforced at registration</strong>: <code>Filterable</code> on a bare
   <code>dict</code>, a non-<code>str</code> key type, or an unsupported value type raises
   <code>ConfigurationError</code>, as does <code>Filterable(keys=[...])</code> on a non-map field.</li>

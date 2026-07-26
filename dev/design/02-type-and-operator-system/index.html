@@ -425,6 +425,35 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorial/filtersets/" class="md-nav__link">
+        
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-list-checks" viewBox="0 0 24 24"><path d="M13 5h8M13 12h8M13 19h8M3 17l2 2 4-4M3 7l2 2 4-4"/></svg>
+  
+  <span class="md-ellipsis">
+    
+  
+  FilterSets: allow-list filter surfaces
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -1627,8 +1656,10 @@ unknown. So support is deliberately narrow:</p>
 <p>generates <code>metadata__region</code>, <code>metadata__tier</code> (typed as <code>T</code>, <strong>implicit
   <code>eq</code> only</strong> in this release), and nothing else. No enumeration → no value
   filtering; we do not accept arbitrary <code>metadata__&lt;anything&gt;</code> at request
-  time, because those params would be undocumented and untyped. Richer
-  per-key operator curation is deferred to <code>FilterSet</code>.</p>
+  time, because those params would be undocumented and untyped. Value-at-key
+  stays eq-only <strong>by design</strong>, including under <code>FilterSet</code> — a map key is an
+  escape hatch, not a schema; fields needing richer operators belong in the
+  model.</p>
 <p>Because a map key becomes part of a Mongo field path, keys are
 <strong>sanitized</strong>: empty keys and keys containing <code>.</code>, <code>$</code>, or NUL are rejected —
 at <code>Filterable(keys=...)</code> construction time (<code>ConfigurationError</code>), at
@@ -1712,7 +1743,7 @@ design provides four layers, from coarse to fine, each overriding the previous:<
 </span><span id="__span-12-3"><a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a>        <span class="n">model</span> <span class="o">=</span> <span class="n">User</span>
 </span><span id="__span-12-4"><a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a>        <span class="n">fields</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;contains&quot;</span><span class="p">],</span> <span class="s2">&quot;age&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;gte&quot;</span><span class="p">,</span> <span class="s2">&quot;lte&quot;</span><span class="p">]}</span>
 </span><span id="__span-12-5"><a id="__codelineno-12-5" name="__codelineno-12-5" href="#__codelineno-12-5"></a>    <span class="c1"># custom filter not derivable from a single field:</span>
-</span><span id="__span-12-6"><a id="__codelineno-12-6" name="__codelineno-12-6" href="#__codelineno-12-6"></a>    <span class="n">active_since</span> <span class="o">=</span> <span class="n">DateFilter</span><span class="p">(</span><span class="n">field</span><span class="o">=</span><span class="s2">&quot;last_login&quot;</span><span class="p">,</span> <span class="n">op</span><span class="o">=</span><span class="s2">&quot;gte&quot;</span><span class="p">)</span>
+</span><span id="__span-12-6"><a id="__codelineno-12-6" name="__codelineno-12-6" href="#__codelineno-12-6"></a>    <span class="n">active_since</span> <span class="o">=</span> <span class="n">Filter</span><span class="p">(</span><span class="n">field</span><span class="o">=</span><span class="s2">&quot;last_login&quot;</span><span class="p">,</span> <span class="n">op</span><span class="o">=</span><span class="s2">&quot;gte&quot;</span><span class="p">)</span>
 </span></code></pre></div>
 <p>Two rules pin down how the ladder interacts with the safety gates (settled by
 the implementation, now normative):</p>

@@ -423,6 +423,35 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../tutorial/filtersets/" class="md-nav__link">
+        
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-list-checks" viewBox="0 0 24 24"><path d="M13 5h8M13 12h8M13 19h8M3 17l2 2 4-4M3 7l2 2 4-4"/></svg>
+  
+  <span class="md-ellipsis">
+    
+  
+  FilterSets: allow-list filter surfaces
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -905,6 +934,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#020-stage-3-complete-filterset-example-app" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        <code>0.2.0</code> — Stage 3 complete: <code>FilterSet</code> + example app
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#013-stage-3-checkpoint-arrays-of-nested-models-maps" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -1041,6 +1081,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#020-stage-3-complete-filterset-example-app" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        <code>0.2.0</code> — Stage 3 complete: <code>FilterSet</code> + example app
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#013-stage-3-checkpoint-arrays-of-nested-models-maps" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -1152,6 +1203,37 @@ unstable API, and breaking changes bump the minor version and are called out
 below. See the <a href="../design/05-roadmap-and-release/">Roadmap</a> for what's coming
 next, and the <a href="https://github.com/eytanohana/fast-pager/blob/main/DEVELOPMENT_PLAN.md">development plan</a>
 for the execution detail behind each stage.</p>
+<h2 id="020-stage-3-complete-filterset-example-app"><code>0.2.0</code> — Stage 3 complete: <code>FilterSet</code> + example app<a class="headerlink" href="#020-stage-3-complete-filterset-example-app" title="Permanent link">&para;</a></h2>
+<p>Stage 3 caps off with <strong><code>FilterSet</code></strong> (design doc 01 Option B): a
+declarative class holding a <strong>strict allow-list</strong> filter surface apart from
+the model — <code>Meta.model</code> plus a <code>fields</code> mapping keyed by public dotted
+param names, where <strong>anything not listed is not filterable</strong> (the safe
+posture for public APIs). Values are exact operator lists (or <code>"__all__"</code> /
+<code>ops.ALL</code> for everything the type supports, still <code>allow_regex</code>-gated),
+validated <strong>at class definition</strong> with the usual rich <code>ConfigurationError</code>.
+The mapping occupies layer 4 of the precedence ladder — the same layer as
+<code>FilterConfig.operators</code>, which it replaces on FilterSet routes (that knob,
+<code>exclude</code>, and <code>sortable</code> are rejected inside <code>Meta.config</code>; <code>Meta.sortable</code>
+is the sortable allow-list, and the sortable default becomes "listed and
+scalar") — and the model-level absolutes (<code>ops.NONE</code>, <code>sortable=False</code>)
+remain final. <strong>Custom declared filters</strong> add parameters no generated name
+covers: <code>active_since = Filter(field="last_login", op="gte")</code> — attribute
+name (or <code>param=</code>) as the public name, value typed by the target field +
+operator, compiled through the normal AST path, inheritable via abstract
+(<code>Meta</code>-less) base classes. <code>FilterDepends(UserFilter)</code> returns the same
+uniform <code>FilterQuery</code> as the zero-config and <code>Filterable</code> paths — call
+sites never change — and multiple FilterSets per model (public vs. admin)
+coexist trivially. A runnable example app (users + addresses + tags +
+orders + metadata map, all three declaration styles, no MongoDB needed)
+ships under <code>examples/mongo_app/</code> and is exercised in CI.</p>
+<p>That completes the whole <code>0.1.x</code> → <code>0.2.0</code> arc — Stage 3 grew the type
+system from flat scalars to the full compound surface: arrays of scalars
+(<code>0.1.1</code>), nested models via dotted paths (<code>0.1.2</code>), arrays of nested
+models (<code>elem</code> → single <code>$elemMatch</code>) and <code>dict[str, T]</code> maps (<code>0.1.3</code>),
+and now allow-list filter surfaces (<code>0.2.0</code>). Strictly additive: no
+behavior changes to anything shipped in <code>0.1.3</code>. See the new
+<a href="../tutorial/filtersets/">FilterSet tutorial</a>. 100% test coverage,
+<code>mypy --strict</code> clean.</p>
 <h2 id="013-stage-3-checkpoint-arrays-of-nested-models-maps"><code>0.1.3</code> — Stage 3 checkpoint: arrays of nested models + maps<a class="headerlink" href="#013-stage-3-checkpoint-arrays-of-nested-models-maps" title="Permanent link">&para;</a></h2>
 <p>The compound-type tables of design doc 02 are now complete. <strong>Arrays of
 nested models</strong> (<code>list[NestedModel]</code>) get element matching via the <code>elem</code>
@@ -1259,10 +1341,10 @@ the repository has CI + fully automated release tooling
 but <strong>no library functionality yet</strong>. Nothing in this documentation site is
 installable against <code>0.0.1</code> — see <a href="../getting-started/">Getting Started</a>.</p>
 <h2 id="coming-next">Coming next<a class="headerlink" href="#coming-next" title="Permanent link">&para;</a></h2>
-<p>The <code>FilterSet</code> class caps Stage 3 in <strong><code>v0.2.0</code></strong>: an allow-list <code>fields</code>
-mapping per filter surface, multiple filter surfaces per model, and custom
-declared filters — plus a non-trivial example app (users + addresses +
-tags + orders) exercised in CI. Tracked in
+<p>Stage 4 ships the response envelope in <strong><code>v0.3.0</code></strong>: an opt-in generic
+<code>Page[T]</code> model with <code>q.paginate(collection, total="exact|estimated|none")</code>
+(count cost as a knob, correct OpenAPI schema), plus the <code>page</code>/<code>page_size</code>
+strategy as sugar over offset. Tracked in
 <a href="../design/05-roadmap-and-release/">design doc 05 — Roadmap &amp; Release Plan</a>.</p>
 
 
