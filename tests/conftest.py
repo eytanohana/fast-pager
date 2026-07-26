@@ -51,6 +51,17 @@ class Curated(BaseModel):
     email: Annotated[str, Filterable(sortable=False)]
 
 
+class Tagged(BaseModel):
+    """The Phase 3a workhorse: arrays of scalars in every supported shape."""
+
+    name: str
+    tags: list[str]
+    scores: list[int]
+    colors: list[Color]
+    codes: set[int]
+    labels: Optional[list[str]] = None
+
+
 @pytest.fixture(autouse=True)
 def _clear_plan_cache():
     """Isolate the per-(model, config) plan cache between tests."""

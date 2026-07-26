@@ -1,10 +1,12 @@
 """Pydantic model introspection: model → tuple of :class:`FieldSpec`.
 
 Resolving ``Optional``, aliases, enums, :class:`~fast_pager.Filterable`
-metadata, and (later) containers happens here, once, at registration time.
-Stage 2 handles scalar fields and ``Optional`` scalars; unsupported fields
-are silently skipped (they simply are not filterable yet) — unless they
-carry an explicit ``Filterable`` annotation, which is a configuration error.
+metadata, and containers happens here, once, at registration time. Scalar
+fields, ``list[T]``/``set[T]`` of supported scalars, and their ``Optional``
+wrappers are supported; anything else (nested models, ``dict``, arrays of
+nested models — later stages) is silently skipped (it simply is not
+filterable yet) — unless it carries an explicit ``Filterable`` annotation,
+which is a configuration error.
 
 Naming (design doc 02, *Field → DB-name mapping and aliases*): each field
 has two names, resolved independently —
@@ -47,8 +49,10 @@ class FieldSpec:
         source: Backend field name the compiled query uses
             (``Filterable(source=...)``, else the Pydantic alias, else the
             field name).
-        py_type: Resolved, Optional-unwrapped base type (or ``Literal`` form).
-        container: Container shape; always ``SCALAR`` in Stage 2.
+        py_type: Resolved, Optional-unwrapped base type (or ``Literal``
+            form); the *element* type for ``LIST`` fields.
+        container: Container shape; ``SCALAR``, or ``LIST`` for
+            ``list[T]``/``set[T]`` of supported scalars.
         nullable: Whether the field accepts ``None`` (drives ``isnull``).
         filterable: The field's ``Filterable`` annotation, when present.
     """
@@ -81,6 +85,21 @@ def _unwrap_optional(annotation: Any) -> tuple[Any, bool]:
     return annotation, False
 
 
+def _list_element(annotation: Any) -> Any | None:
+    """The element type of a ``list[T]``/``set[T]`` of supported scalars.
+
+    Returns ``None`` for anything else — bare ``list``, other container
+    origins, and element types that are not filterable scalars (e.g. nested
+    models, ``list[str | None]``) all stay unsupported for now.
+    """
+    if get_origin(annotation) not in (list, set):
+        return None
+    args = get_args(annotation)
+    if len(args) == 1 and type_kind(args[0]) is not None:
+        return args[0]
+    return None
+
+
 def _filterable_metadata(model: type[BaseModel], name: str, info: FieldInfo) -> Filterable | None:
     """Extract a field's ``Filterable`` annotation, rejecting duplicates."""
     found = [m for m in info.metadata if isinstance(m, Filterable)]
@@ -102,8 +121,9 @@ def introspect_model(model: type[BaseModel]) -> tuple[FieldSpec, ...]:
 
     Public and source names follow the module-level naming rules (``param`` /
     alias / field name and ``source`` / alias / field name respectively).
-    Fields whose type is not a supported scalar are skipped — unless they
-    carry a ``Filterable`` annotation, which raises
+    Fields whose type is not a supported scalar or a ``list[T]``/``set[T]``
+    of supported scalars are skipped — unless they carry a ``Filterable``
+    annotation, which raises
     :class:`~fast_pager.errors.ConfigurationError` naming the field and type
     (silently ignoring explicit metadata would hide a misconfiguration).
     """
@@ -111,7 +131,12 @@ def introspect_model(model: type[BaseModel]) -> tuple[FieldSpec, ...]:
     for name, info in model.model_fields.items():
         filterable = _filterable_metadata(model, name, info)
         base, nullable = _unwrap_optional(info.annotation)
-        if type_kind(base) is None:
+        element = _list_element(base)
+        if element is not None:
+            py_type, container = element, Container.LIST
+        elif type_kind(base) is not None:
+            py_type, container = base, Container.SCALAR
+        else:
             if filterable is not None:
                 raise ConfigurationError(
                     f"field {name!r} of model {model.__name__} is annotated with "
@@ -126,8 +151,8 @@ def introspect_model(model: type[BaseModel]) -> tuple[FieldSpec, ...]:
             FieldSpec(
                 path=(public,),
                 source=source,
-                py_type=base,
-                container=Container.SCALAR,
+                py_type=py_type,
+                container=container,
                 nullable=nullable,
                 filterable=filterable,
             )

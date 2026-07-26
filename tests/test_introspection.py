@@ -8,7 +8,7 @@ from uuid import UUID
 import pytest
 from pydantic import BaseModel, Field
 
-from conftest import Aliased, Color, User
+from conftest import Aliased, Color, Tagged, User
 from fast_pager import ConfigurationError, Filterable, ops
 from fast_pager.introspection import introspect_model, public_field_names
 from fast_pager.operators import Container
@@ -67,7 +67,7 @@ def test_unsupported_fields_are_skipped():
     class M(BaseModel):
         ok: str
         blob: bytes
-        tags: list[str]
+        blobs: list[bytes]  # arrays are supported, but not of unsupported scalars
         meta: dict[str, str]
         either: Union[int, str]
         maybe_either: Optional[Union[int, str]] = None
@@ -151,3 +151,62 @@ def test_filterable_on_unsupported_type_raises_naming_field_and_type():
 
     with pytest.raises(ConfigurationError, match=r"'blob'.*bytes"):
         introspect_model(M)
+
+
+# ---------------------------------------------------------------------------
+# Phase 3a: arrays of scalars → Container.LIST.
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    ("field", "element"),
+    [("tags", str), ("scores", int), ("colors", Color), ("codes", int)],
+)
+def test_list_and_set_of_scalars_resolve_to_list_container(field, element):
+    spec = spec_map(Tagged)[field]
+    assert spec.container is Container.LIST
+    assert spec.py_type == element
+    assert spec.nullable is False
+    assert spec.source == field
+
+
+def test_optional_list_is_nullable_with_element_type():
+    spec = spec_map(Tagged)["labels"]
+    assert spec.container is Container.LIST
+    assert spec.py_type is str
+    assert spec.nullable is True
+
+
+def test_unsupported_list_shapes_are_skipped():
+    class Inner(BaseModel):
+        city: str
+
+    class M(BaseModel):
+        ok: list[str]
+        bare: list
+        of_nested: list[Inner]
+        of_bytes: list[bytes]
+        of_optional: list[str | None]
+        frozen: frozenset[str]
+
+    assert set(spec_map(M)) == {"ok"}
+
+
+def test_filterable_on_list_of_nested_models_raises_naming_field_and_type():
+    class Inner(BaseModel):
+        city: str
+
+    class M(BaseModel):
+        addresses: Annotated[list[Inner], Filterable(ops=["has"])]
+
+    with pytest.raises(ConfigurationError, match=r"'addresses'.*not a supported"):
+        introspect_model(M)
+
+
+def test_filterable_source_and_param_apply_to_list_fields():
+    class M(BaseModel):
+        tags: Annotated[list[str], Filterable(param="labels", source="tagList")]
+
+    spec = spec_map(M)["labels"]
+    assert spec.container is Container.LIST
+    assert spec.source == "tagList"
