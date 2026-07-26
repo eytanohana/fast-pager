@@ -31,7 +31,7 @@ __all__ = [
 
 
 class Container(enum.Enum):
-    """The container shape of a model field (only ``SCALAR`` in Stage 1)."""
+    """The container shape of a model field (``SCALAR`` and ``LIST`` so far)."""
 
     SCALAR = "scalar"
     LIST = "list"
@@ -76,6 +76,8 @@ class Operator:
 
 
 _SCALAR = frozenset({Container.SCALAR})
+_LIST = frozenset({Container.LIST})
+_SCALAR_OR_LIST = frozenset({Container.SCALAR, Container.LIST})
 
 
 def _op(
@@ -83,8 +85,9 @@ def _op(
     arity: Arity = Arity.SINGLE,
     value_type: ValueTypeRule = ValueTypeRule.SAME_AS_FIELD,
     tier: Tier = Tier.SAFE,
+    applies_to: frozenset[Container] = _SCALAR,
 ) -> Operator:
-    return Operator(name=name, arity=arity, value_type=value_type, applies_to=_SCALAR, tier=tier)
+    return Operator(name=name, arity=arity, value_type=value_type, applies_to=applies_to, tier=tier)
 
 
 DEFAULT_REGISTRY: dict[str, Operator] = {
@@ -108,8 +111,29 @@ DEFAULT_REGISTRY: dict[str, Operator] = {
         # `regex` is FULL-tier *and* additionally gated by FilterConfig.allow_regex.
         _op("regex", tier=Tier.FULL),
         _op("text_search", tier=Tier.FULL),
-        _op("isnull", arity=Arity.BOOL, value_type=ValueTypeRule.BOOL),
-        _op("exists", arity=Arity.BOOL, value_type=ValueTypeRule.BOOL, tier=Tier.FULL),
+        # Nullability operators apply to scalar *and* array fields alike.
+        _op("isnull", arity=Arity.BOOL, value_type=ValueTypeRule.BOOL, applies_to=_SCALAR_OR_LIST),
+        _op(
+            "exists",
+            arity=Arity.BOOL,
+            value_type=ValueTypeRule.BOOL,
+            tier=Tier.FULL,
+            applies_to=_SCALAR_OR_LIST,
+        ),
+        # Array (list[T]/set[T]) operators: membership and shape, never the
+        # element's scalar operators (design doc 02, arrays of scalars).
+        _op("has", applies_to=_LIST),
+        _op("has_any", arity=Arity.LIST, applies_to=_LIST),
+        _op("has_all", arity=Arity.LIST, applies_to=_LIST),
+        _op("len__eq", value_type=ValueTypeRule.INT, applies_to=_LIST),
+        # The length comparisons compile to `$expr` (no index support), so
+        # they are FULL-tier; `len__eq` compiles to plain `$size` and is SAFE.
+        _op("len__ne", value_type=ValueTypeRule.INT, tier=Tier.FULL, applies_to=_LIST),
+        _op("len__gt", value_type=ValueTypeRule.INT, tier=Tier.FULL, applies_to=_LIST),
+        _op("len__gte", value_type=ValueTypeRule.INT, tier=Tier.FULL, applies_to=_LIST),
+        _op("len__lt", value_type=ValueTypeRule.INT, tier=Tier.FULL, applies_to=_LIST),
+        _op("len__lte", value_type=ValueTypeRule.INT, tier=Tier.FULL, applies_to=_LIST),
+        _op("empty", arity=Arity.BOOL, value_type=ValueTypeRule.BOOL, applies_to=_LIST),
     )
 }
 """The default operator registry: name → :class:`Operator`."""
@@ -140,6 +164,14 @@ _PROFILES: dict[str, TypeProfile] = {
     "uuid": TypeProfile(safe=("eq", "ne", "in", "nin"), full=()),
     "enum": TypeProfile(safe=("eq", "ne", "in", "nin"), full=()),
 }
+
+_ARRAY_PROFILE = TypeProfile(
+    safe=("has", "has_any", "has_all", "len__eq", "empty"),
+    full=("len__ne", "len__gt", "len__gte", "len__lt", "len__lte"),
+)
+"""The single operator profile for ``list[T]``/``set[T]`` fields, whatever
+the element type — array operators are about membership and shape, not the
+element's scalar semantics (design doc 02)."""
 
 _NULLABLE_SAFE: tuple[str, ...] = ("isnull",)
 _NULLABLE_FULL: tuple[str, ...] = ("exists",)
@@ -176,35 +208,46 @@ def type_kind(py_type: Any) -> str | None:
 def type_name(py_type: Any) -> str:
     """Human-readable name of a resolved field type, for error messages.
 
-    ``int`` renders as ``int`` (not ``<class 'int'>``); ``Literal`` and other
-    typing forms fall back to their ``str()`` representation.
+    ``int`` renders as ``int`` (not ``<class 'int'>``); parameterized and
+    typing forms (``list[bytes]``, ``Literal[...]``) keep their ``str()``
+    representation, which spells out the parameters.
     """
+    if get_origin(py_type) is not None:
+        return str(py_type)
     name = getattr(py_type, "__name__", None)
     return name if isinstance(name, str) else str(py_type)
 
 
 def operators_for(
-    py_type: Any, nullable: bool, profile: Literal["safe", "full"]
+    py_type: Any,
+    nullable: bool,
+    profile: Literal["safe", "full"],
+    container: Container = Container.SCALAR,
 ) -> tuple[str, ...]:
-    """Operator names a type exposes under the given profile tier.
+    """Operator names a field exposes under the given profile tier.
 
-    ``full`` includes everything in ``safe``. Nullable fields additionally get
-    ``isnull`` (safe) and ``exists`` (full). Returns ``()`` for unsupported
-    types. The ``regex`` config gate is applied by the caller, not here.
+    ``py_type`` is the resolved scalar type — the *element* type when
+    ``container`` is ``LIST``, in which case the array profile applies
+    regardless of the element kind. ``full`` includes everything in ``safe``.
+    Nullable fields additionally get ``isnull`` (safe) and ``exists`` (full).
+    Returns ``()`` for unsupported types. The ``regex`` config gate is
+    applied by the caller, not here.
     """
     kind = type_kind(py_type)
     if kind is None:
         return ()
-    tp = _PROFILES[kind]
+    tp = _ARRAY_PROFILE if container is Container.LIST else _PROFILES[kind]
     names = tp.safe if profile == "safe" else tp.safe + tp.full
     if nullable:
         names = names + (_NULLABLE_SAFE if profile == "safe" else _NULLABLE_SAFE + _NULLABLE_FULL)
     return names
 
 
-def all_operators_for(py_type: Any, nullable: bool) -> tuple[str, ...]:
-    """Every operator name that is *valid* for a type (safe + full tiers).
+def all_operators_for(
+    py_type: Any, nullable: bool, container: Container = Container.SCALAR
+) -> tuple[str, ...]:
+    """Every operator name that is *valid* for a field (safe + full tiers).
 
     Used to validate explicit per-field operator configuration.
     """
-    return operators_for(py_type, nullable, "full")
+    return operators_for(py_type, nullable, "full", container)

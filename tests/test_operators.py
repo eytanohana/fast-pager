@@ -11,7 +11,9 @@ import pytest
 from fast_pager.operators import (
     DEFAULT_REGISTRY,
     Arity,
+    Container,
     Tier,
+    ValueTypeRule,
     all_operators_for,
     operators_for,
     type_kind,
@@ -104,3 +106,52 @@ def test_registry_records():
     assert DEFAULT_REGISTRY["in"].arity is Arity.LIST
     assert DEFAULT_REGISTRY["between"].arity is Arity.RANGE
     assert DEFAULT_REGISTRY["isnull"].arity is Arity.BOOL
+
+
+# ---------------------------------------------------------------------------
+# Phase 3a: the array (Container.LIST) operator profile.
+# ---------------------------------------------------------------------------
+
+ARRAY_SAFE = {"has", "has_any", "has_all", "len__eq", "empty"}
+ARRAY_FULL = {"len__ne", "len__gt", "len__gte", "len__lt", "len__lte"}
+
+
+@pytest.mark.parametrize("element", [str, int, Decimal, datetime, UUID, Color, Literal["a"]])
+def test_array_safe_profile_is_element_type_agnostic(element):
+    ops = operators_for(element, nullable=False, profile="safe", container=Container.LIST)
+    assert set(ops) == ARRAY_SAFE
+
+
+def test_array_full_profile_adds_the_len_comparisons():
+    ops = operators_for(str, nullable=False, profile="full", container=Container.LIST)
+    assert set(ops) == ARRAY_SAFE | ARRAY_FULL
+
+
+def test_nullable_array_adds_isnull_and_exists():
+    safe = operators_for(str, nullable=True, profile="safe", container=Container.LIST)
+    full = operators_for(str, nullable=True, profile="full", container=Container.LIST)
+    assert "isnull" in safe and "exists" not in safe
+    assert "isnull" in full and "exists" in full
+
+
+def test_array_of_unsupported_element_has_no_operators():
+    assert operators_for(bytes, nullable=False, profile="full", container=Container.LIST) == ()
+
+
+def test_all_operators_for_accepts_the_container():
+    assert set(all_operators_for(str, nullable=False, container=Container.LIST)) == (
+        ARRAY_SAFE | ARRAY_FULL
+    )
+
+
+def test_array_registry_records():
+    assert DEFAULT_REGISTRY["has"].arity is Arity.SINGLE
+    assert DEFAULT_REGISTRY["has"].value_type is ValueTypeRule.SAME_AS_FIELD
+    assert DEFAULT_REGISTRY["has_any"].arity is Arity.LIST
+    assert DEFAULT_REGISTRY["has_all"].arity is Arity.LIST
+    assert DEFAULT_REGISTRY["len__eq"].value_type is ValueTypeRule.INT
+    assert DEFAULT_REGISTRY["len__eq"].tier is Tier.SAFE
+    assert DEFAULT_REGISTRY["len__gte"].tier is Tier.FULL  # $expr — no index support
+    assert DEFAULT_REGISTRY["empty"].arity is Arity.BOOL
+    assert DEFAULT_REGISTRY["has"].applies_to == frozenset({Container.LIST})
+    assert Container.LIST in DEFAULT_REGISTRY["isnull"].applies_to
