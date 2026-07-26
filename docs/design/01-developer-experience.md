@@ -247,8 +247,15 @@ infinite-scroll UIs and a natural fit with cursor pagination).
   FastAPI **422** with the standard validation error shape, because each parameter
   is a properly typed `Query(...)`. No custom error format to learn.
 - **Unknown operators/params**: configurable — `ignore` (default, forgiving) or
-  `strict` (422 on unrecognized `field__op`). Strict mode is great for catching
-  client typos in development.
+  `strict` (422 on unrecognized `field__op`). The strict rule is precise: a
+  parameter is rejected **iff** it contains the configured separator **and**
+  matches none of the generated (or reserved `limit`/`offset`/`sort`)
+  parameter names — i.e. it claims to be a `field__op` filter and isn't one.
+  Separator-free parameters are never rejected, because the route (or another
+  dependency) may legitimately declare its own and the filter dependency
+  cannot see them. Corollary: a route using strict mode must not declare its
+  own query parameters containing the separator, or requests using them would
+  be rejected. Strict mode is great for catching client typos in development.
 
 ---
 

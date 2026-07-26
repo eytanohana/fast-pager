@@ -205,8 +205,12 @@ it explicit (annotate it, or pick a concrete type via `FilterSet`).
 
 ## Field → DB-name mapping and aliases
 
-- **Pydantic aliases** are respected: if a field has `alias="userName"`, the
-  query parameter uses the public name; the compiled query uses the source name.
+- **Pydantic aliases** are respected: an alias (e.g. `alias="userName"`)
+  defaults **both** names at once — the query parameter is named after the
+  alias and the compiled query targets the alias too. `Filterable(param=...)`
+  and `Filterable(source=...)` each override one side independently, so the
+  resolution order is: public name = `param` → alias → field name; source
+  name = `source` → alias → field name.
 - **Explicit source override** for when the Mongo field differs from the model:
 
   ```python
@@ -246,8 +250,17 @@ design provides four layers, from coarse to fine, each overriding the previous:
    score: Annotated[int, Filterable(ops=ops.ALL)]          # everything int supports
    ```
 
-4. **Per-field in a `FilterSet`.** Wins over everything; also where you put
-   custom/computed filters.
+4. **Per-field on the route.** Wins over everything, including the field's own
+   `Filterable(ops=...)` — the route has the final say over its own surface.
+   The shipped spelling is the route-level mapping, keyed by public parameter
+   name:
+
+   ```python
+   FilterConfig(operators={"name": ["startswith"], "age": ["gte", "lte"]})
+   ```
+
+   A `FilterSet`'s `fields` mapping (Stage 3) occupies this same layer, and is
+   also where custom/computed filters live:
 
    ```python
    class UserFilter(FilterSet):
@@ -257,6 +270,21 @@ design provides four layers, from coarse to fine, each overriding the previous:
        # custom filter not derivable from a single field:
        active_since = DateFilter(field="last_login", op="gte")
    ```
+
+Two rules pin down how the ladder interacts with the safety gates (settled by
+the implementation, now normative):
+
+- **`ops.NONE` and `sortable=False` are absolute.** They sit outside the
+  ladder: a config that tries to override them — naming an `ops.NONE` field in
+  `FilterConfig.operators`, or a `sortable=False` field in
+  `FilterConfig.sortable` — raises `ConfigurationError` at registration.
+  Route-level config can never quietly resurrect a field the model opted out;
+  a model-level opt-out is a security posture, not a default.
+- **Explicit operator lists bypass the `allow_regex` gate.** Listing `"regex"`
+  in `FilterConfig.operators`, in `Filterable(ops=[...])`, or in a
+  `type_profiles` entry is the eyes-open opt-in and needs no extra flag. The
+  tier profiles remain gated: `ops.ALL` and the `safe`/`full` default profile
+  emit `regex` only with `FilterConfig(allow_regex=True)`.
 
 ### Allow-list vs deny-list semantics
 
