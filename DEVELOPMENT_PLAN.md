@@ -43,8 +43,11 @@ Stage 1 deliverable.
 | `0.0.1` | 0 | ✅ Name reserved on PyPI; CI + release automation |
 | `0.0.2` | 1 | ✅ Stage 1 in full (both planned checkpoints landed together): core engine + FastAPI integration + versioned docs site — the README demo works |
 | `0.0.3` | 2 | ✅ Per-field control: `Annotated[T, Filterable(...)]`, per-type profiles, strict mode |
-| `0.1.0` | 1–2 | Stages 1–2 exit criteria green, docs describe the shipped API, polish — the release being cut now |
-| `0.2.0` | 3 | `FilterSet` + compound types (arrays, nested models, `elem`) |
+| `0.1.0` | 1–2 | ✅ Stages 1–2 exit criteria green, docs describe the shipped API, polish |
+| `0.1.1` | 3 (checkpoint) | Arrays of scalars: `has`, `has_any`, `has_all`, `len__*`, `empty` |
+| `0.1.2` | 3 (checkpoint) | Nested models: dotted paths, depth-bounded, cycle-safe |
+| `0.1.3` | 3 (checkpoint) | `list[NestedModel]` via `elem`/`$elemMatch` + gated `dict` keys |
+| `0.2.0` | 3 | `FilterSet` (Option B) + Stage 3 exit: example app, docs consolidated |
 | `0.3.0` | 4 | `Page[T]` envelope, `paginate()` helpers, count modes |
 | `0.4.0` | 5 | SQLAlchemy backend + conformance test suite |
 | `0.5.0` | 6 | Cursor/keyset pagination + adapter authoring guide |
@@ -178,19 +181,54 @@ bumped by `release.sh minor`.
 5. Docs: "Controlling the filter surface" tutorial page; config reference.
 6. Exit: layering precedence fully tested; docs updated → release `v0.0.3`.
 
-## Stage 3 — FilterSet + compound types → `v0.2.0`
+## Stage 3 — FilterSet + compound types → phased `0.1.x` releases, capped by `v0.2.0`
 
-1. `FilterSet` class (doc 01 Option B): `Meta.model`, allow-list `fields`
-   mapping, custom declared filters; multiple filtersets per model.
-2. Compound types (doc 02): `list[scalar]` (`has`, `has_any`, `has_all`,
-   `len__*`, `empty` with the pinned empty-vs-missing semantics), nested
-   models via dotted source paths (depth-bounded, cycle-safe), `Optional`
-   `isnull`/`exists`, `dict` with enumerated keys (gated), `list[Nested]`
-   via `elem` → `$elemMatch` (full tier).
-3. Docs: FilterSet guide; compound-types guide; array-semantics page
-   (the `$elemMatch` surprise, documented loudly).
-4. Exit: all doc 02 type tables implemented & tested; the non-trivial example
-   app (users + addresses + tags + orders) works → release `v0.2.0`.
+Stage 3 is the largest stage and ships as four real releases. Every `0.1.x`
+release is **strictly additive** (new container support only; no changes to
+shipped behavior) — anything breaking waits for `0.2.0`. Each phase carries
+its own tests (coverage ≥ 95% held), docs pages, and changelog entry, and is
+release-gated like any other.
+
+### Phase 3a — arrays of scalars → `v0.1.1`
+
+- Introspection: `list[T]`/`set[T]` of supported scalars → `Container.LIST`.
+- Array operator family per doc 02: `has`, `has_any`, `has_all`,
+  `len`/`len__eq`/`len__gt`/`len__gte`/`len__lt`/`len__lte`, `empty` — with
+  the pinned empty-vs-missing semantics and the "no scalar operators on
+  arrays" rule (no `tags__contains`).
+- Mongo compilation: `has` → implicit scalar match, `has_any` → `$in`,
+  `has_all` → `$all`, `len__eq` → `$size`, `len` ranges → `$expr`,
+  `empty` per the doc 02 spec. `max_list_length` applies to `has_any`/`has_all`.
+- Docs: arrays section in the operator reference + tutorial coverage.
+
+### Phase 3b — nested models → `v0.1.2`
+
+- Introspection recurses into nested Pydantic models: dotted source paths
+  (`address.city`), generated names like `address__city__contains`,
+  depth-bounded (default 2, configurable), cycle-safe, name-collision
+  detection at registration.
+- `Filterable` on nested fields and on the embedding field (e.g. exclude a
+  whole subtree) — semantics documented.
+- Docs: nested-models tutorial section + reference updates.
+
+### Phase 3c — arrays of nested models + maps → `v0.1.3`
+
+- `list[NestedModel]` via the `elem` token → single `$elemMatch` group
+  (full tier), with the independent-conditions default loudly documented.
+- `dict[str, T]`: `has_key` always generatable; value-at-key only for keys
+  enumerated in `Filterable(keys=[...])` (doc 02) — off by default.
+- Docs: array-semantics page (the `$elemMatch` surprise), maps section.
+
+### Phase 3d — `FilterSet` + stage exit → `v0.2.0`
+
+- `FilterSet` class (doc 01 Option B): `Meta.model`, strict allow-list
+  `fields` mapping, custom declared filters, multiple filtersets per model;
+  `FilterDepends(UserFilter)` wiring; layering: FilterSet is the same layer
+  as `FilterConfig.operators` (doc 02 layer 4).
+- Non-trivial example app (users + addresses + tags + orders) under
+  `examples/`, exercised in CI.
+- Docs: FilterSet guide; compound-types guide consolidated.
+- Exit: all doc 02 type tables implemented & tested → release `v0.2.0`.
 
 ## Stage 4 — Response envelope & ergonomics → `v0.3.0`
 
