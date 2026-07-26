@@ -1423,12 +1423,13 @@ per-field overrides layered on top.</p>
 <code>list[str]</code>; here is the full treatment.</p>
 <h3 id="listt-sett-arrays-of-scalars"><code>list[T]</code> / <code>set[T]</code> (arrays of scalars)<a class="headerlink" href="#listt-sett-arrays-of-scalars" title="Permanent link">&para;</a></h3>
 <p>An array field needs operators about <strong>membership and shape</strong>, which are distinct
-from scalar operators. We expose a curated set:</p>
+from scalar operators. We expose a curated set, tiered like everything else:</p>
 <table>
 <thead>
 <tr>
 <th>Operator</th>
 <th>Meaning</th>
+<th>Tier</th>
 <th>Mongo compilation</th>
 </tr>
 </thead>
@@ -1436,37 +1437,61 @@ from scalar operators. We expose a curated set:</p>
 <tr>
 <td><code>has</code></td>
 <td>array contains this element</td>
+<td><code>safe</code></td>
 <td><code>{tags: "x"}</code> (Mongo matches scalar against array)</td>
 </tr>
 <tr>
 <td><code>has_any</code></td>
 <td>contains any of these</td>
+<td><code>safe</code></td>
 <td><code>{tags: {$in: [...]}}</code></td>
 </tr>
 <tr>
 <td><code>has_all</code></td>
 <td>contains all of these</td>
+<td><code>safe</code></td>
 <td><code>{tags: {$all: [...]}}</code></td>
 </tr>
 <tr>
-<td><code>len</code> (<code>len__gte</code>, etc.)</td>
-<td>array length comparison</td>
-<td><code>{tags: {$size: n}}</code> / <code>$expr</code> for ranges</td>
+<td><code>len__eq</code></td>
+<td>array length equals</td>
+<td><code>safe</code></td>
+<td><code>{tags: {$size: n}}</code></td>
 </tr>
 <tr>
 <td><code>empty</code></td>
 <td>is empty / non-empty</td>
+<td><code>safe</code></td>
 <td>see precise spec below</td>
+</tr>
+<tr>
+<td><code>len__ne</code>, <code>len__gt</code>, <code>len__gte</code>, <code>len__lt</code>, <code>len__lte</code></td>
+<td>array length comparison</td>
+<td><code>full</code></td>
+<td>guarded <code>$expr</code> (below)</td>
 </tr>
 </tbody>
 </table>
+<p><code>len__eq</code> is <code>safe</code> because it compiles to a plain <code>$size</code> match, which can use
+an index. The other five <code>len</code> comparisons compile to <code>$expr</code> — no index
+support, same collection-scan reasoning that gates other <code>full</code> operators —
+so they are <code>full</code>-tier.</p>
 <p>Query forms:</p>
 <div class="language-text highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>?tags__has=python
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>?tags__has_any=python,rust            # any-of
 </span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>?tags__has_all=python,rust            # all-of
-</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>?tags__len__gte=2
-</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>?tags__empty=false
+</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>?tags__len__eq=2
+</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>?tags__len__gte=2                     # full tier
+</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>?tags__empty=false
 </span></code></pre></div>
+<p><strong><code>len</code> range compilation.</strong> Mongo's aggregation <code>$size</code> errors the whole
+query when the field is missing, <code>null</code>, or not an array. So the <code>len__ne</code>/
+<code>gt</code>/<code>gte</code>/<code>lt</code>/<code>lte</code> operators compile to a <em>guarded</em> <code>$expr</code>:</p>
+<div class="language-json highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="p">{</span><span class="nt">&quot;$expr&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="nt">&quot;$gte&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[{</span><span class="nt">&quot;$size&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="nt">&quot;$cond&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[{</span><span class="nt">&quot;$isArray&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;$tags&quot;</span><span class="p">},</span><span class="w"> </span><span class="s2">&quot;$tags&quot;</span><span class="p">,</span><span class="w"> </span><span class="p">[]]}},</span><span class="w"> </span><span class="mi">2</span><span class="p">]}}</span>
+</span></code></pre></div>
+<p>The <code>$cond</code>/<code>$isArray</code> guard falls back to <code>[]</code> for anything that isn't an
+array, so a missing/null/non-array value counts as length 0 instead of
+failing the query.</p>
 <p>Precise <code>empty</code> semantics (empty-vs-missing is a classic Mongo trap, so we pin
 it down):</p>
 <ul>
@@ -1482,21 +1507,43 @@ it down):</p>
 <p>Design choice: we do <strong>not</strong> silently apply scalar string operators
 (<code>contains</code>) to <code>list[str]</code> — <code>tags__contains</code> would be ambiguous (substring of
 an element? membership?). Array fields get array operators. Element-level
-substring matching is an explicit, named, <code>full</code>-tier operator
-(<code>tags__has_substr</code>) so the intent is unmistakable.</p>
+substring matching would be an explicit, named, <code>full</code>-tier operator
+(<code>tags__has_substr</code>) so the intent is unmistakable — <strong>designed here, not
+shipped in Phase 3a</strong>; the shipped array profile is exactly the table above.</p>
 </blockquote>
+<p>By default, array fields are <strong>not sortable</strong>, even when filterable — Mongo
+sorts arrays by their min/max element, which is rarely what anyone means by
+"sort by tags." Opt in deliberately with <code>Filterable(sortable=True)</code> on the
+field or by naming it in <code>FilterConfig(sortable=[...])</code>.</p>
 <h3 id="nested-pydantic-models-embedded-documents">Nested Pydantic models (embedded documents)<a class="headerlink" href="#nested-pydantic-models-embedded-documents" title="Permanent link">&para;</a></h3>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="k">class</span><span class="w"> </span><span class="nc">Address</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
-</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>    <span class="n">city</span><span class="p">:</span> <span class="nb">str</span>
-</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>    <span class="nb">zip</span><span class="p">:</span> <span class="nb">str</span>
-</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>
-</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="k">class</span><span class="w"> </span><span class="nc">User</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
-</span><span id="__span-1-6"><a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>    <span class="n">address</span><span class="p">:</span> <span class="n">Address</span>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="k">class</span><span class="w"> </span><span class="nc">Address</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>    <span class="n">city</span><span class="p">:</span> <span class="nb">str</span>
+</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>    <span class="nb">zip</span><span class="p">:</span> <span class="nb">str</span>
+</span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>
+</span><span id="__span-2-5"><a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="k">class</span><span class="w"> </span><span class="nc">User</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+</span><span id="__span-2-6"><a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>    <span class="n">address</span><span class="p">:</span> <span class="n">Address</span>
 </span></code></pre></div>
 <p>Nested fields are reachable by <strong>dotted path</strong>, which maps cleanly to Mongo's dot
 notation:</p>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>?address__city__contains=ams      # field path = address.city, op = contains
+<div class="language-text highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>?address__city__contains=ams      # field path = address.city, op = contains
 </span></code></pre></div>
+<p><strong>The embedding field itself</strong> (<code>address</code>, as opposed to its leaves) exposes
+no operators of its own — filtering happens on the leaves — except the
+nullability pair when it is <code>Optional</code>: <code>address__isnull</code>/<code>address__exists</code>.
+Other <code>Filterable</code> options placed on the embedding field are scoped to that
+field, not the subtree, with one exception:</p>
+<ul>
+<li><code>Filterable(ops=ops.NONE)</code> on <code>address</code> excludes the <strong>entire subtree</strong>
+  (the embedding field and every descendant leaf) from the filter surface.</li>
+<li><code>Filterable(source=...)</code> / <code>Filterable(param=...)</code> on <code>address</code> rename that
+  one path segment for the whole subtree — every descendant path is composed
+  from the renamed segment.</li>
+<li>Any other <code>Filterable</code> option on <code>address</code> (e.g. <code>sortable=True</code>) affects
+  only the embedding field's own spec, never its descendants.</li>
+<li>An explicit <code>Filterable(ops=[...])</code> list on a <strong>non-nullable</strong> embedding
+  field is a <code>ConfigurationError</code> at registration — there is no operator it
+  could validly name (not even <code>isnull</code>, since the field can't be null).</li>
+</ul>
 <h3 id="parameter-matching-precise-there-is-no-request-time-parsing">Parameter matching (precise — there is no request-time parsing)<a class="headerlink" href="#parameter-matching-precise-there-is-no-request-time-parsing" title="Permanent link">&para;</a></h3>
 <p>Because the entire parameter surface is generated from the model at
 registration time, the library <strong>never splits incoming parameter names</strong>. Each
@@ -1507,7 +1554,11 @@ a parameter with that exact name bound to <code>(("address", "city"), contains)<
 <p>This makes otherwise-nasty cases non-issues by construction:</p>
 <ul>
 <li>Multi-token operators (<code>len__gte</code>, <code>elem</code>) — the full spelling is just part
-  of the generated name.</li>
+  of the generated name. Their internal <code>__</code> is hardcoded, independent of
+  <code>FilterConfig.separator</code>: under <code>separator="--"</code>, the generated name is
+  <code>tags--len__gte</code> (segment separator <code>--</code>, operator spelling untouched).
+  Harmless — the name is still generated exactly, never parsed — but pinned
+  so it isn't "fixed" into an inconsistency later.</li>
 <li>A field literally named with <code>__</code> in it, or a nested field that shares a name
   with an operator (<code>address.in</code>) — the generated name is whatever it is;
   collisions between two generated names are detected at registration and
@@ -1519,17 +1570,28 @@ a parameter with that exact name bound to <code>(("address", "city"), contains)<
 <ul>
 <li>Bare <code>address__city</code> (no operator suffix) is emitted as the implicit-<code>eq</code>
   parameter for <code>address.city</code>.</li>
-<li><strong>Recursion depth is bounded</strong> (default 2 levels) and configurable, to keep
-  the generated parameter surface finite and the docs readable.</li>
-<li>Cycles (self-referential models) are detected and truncated at the depth limit.</li>
+<li><strong>Recursion depth is bounded</strong> (default 2 levels, <code>FilterConfig(max_depth=N)</code>)
+  and configurable, to keep the generated parameter surface finite and the
+  docs readable. The precise, shipped semantics: <code>max_depth</code> counts the
+  embedded-model boundaries a field's path <em>crosses</em> — <code>address__city</code> is 1,
+  <code>address__geo__lat</code> is 2. A field whose path crosses more boundaries than
+  the bound allows is silently skipped. A nested model sitting <strong>exactly</strong> at
+  the bound still gets its own spec (so a nullable embedding keeps its
+  <code>isnull</code>/<code>exists</code>) but none of its children. <code>max_depth=0</code> disables
+  nested-model traversal entirely — only top-level scalar/array fields are
+  generated.</li>
+<li>Cycles (self-referential and mutually-recursive models) terminate <strong>by
+  construction</strong>: recursion depth strictly increases on every descent, so the
+  depth bound above is what truncates them — no separate cycle detection is
+  needed.</li>
 </ul>
 <h3 id="listnestedmodel-arrays-of-embedded-documents"><code>list[NestedModel]</code> (arrays of embedded documents)<a class="headerlink" href="#listnestedmodel-arrays-of-embedded-documents" title="Permanent link">&para;</a></h3>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="k">class</span><span class="w"> </span><span class="nc">User</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
-</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>    <span class="n">orders</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">Order</span><span class="p">]</span>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="k">class</span><span class="w"> </span><span class="nc">User</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>    <span class="n">orders</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">Order</span><span class="p">]</span>
 </span></code></pre></div>
 <p>These need <strong>element-match</strong> semantics ("a user with an order over $100 that is
 also refunded"). Mongo expresses this with <code>$elemMatch</code>. We expose it explicitly:</p>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>?orders__elem__amount__gte=100&amp;orders__elem__status=refunded
+<div class="language-text highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>?orders__elem__amount__gte=100&amp;orders__elem__status=refunded
 </span></code></pre></div>
 <p>The <code>elem</code> token groups conditions that must hold for the <em>same</em> array element,
 compiling to a single <code>$elemMatch</code>. Without <code>elem</code>, conditions on different
@@ -1545,7 +1607,7 @@ unknown. So support is deliberately narrow:</p>
   parameter, value typed <code>str</code>) and always available when the field is enabled.</li>
 <li>Value-at-key filtering is available <strong>only for keys enumerated in config</strong>:</li>
 </ul>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="n">metadata</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">],</span> <span class="n">Filterable</span><span class="p">(</span><span class="n">keys</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;region&quot;</span><span class="p">,</span> <span class="s2">&quot;tier&quot;</span><span class="p">])]</span>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="n">metadata</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">],</span> <span class="n">Filterable</span><span class="p">(</span><span class="n">keys</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;region&quot;</span><span class="p">,</span> <span class="s2">&quot;tier&quot;</span><span class="p">])]</span>
 </span></code></pre></div>
 <p>generates <code>metadata__region</code>, <code>metadata__tier</code> (typed as <code>T</code>), and nothing
   else. No enumeration → no value filtering; we do not accept arbitrary
@@ -1565,15 +1627,31 @@ it explicit (annotate it, or pick a concrete type via <code>FilterSet</code>).</
   and <code>Filterable(source=...)</code> each override one side independently, so the
   resolution order is: public name = <code>param</code> → alias → field name; source
   name = <code>source</code> → alias → field name.</li>
+<li><strong>Nested paths compose segment by segment.</strong> Each level of a nested model
+  resolves its own public/source name independently by the rule above, and
+  the two paths are joined separately: the public path with <code>separator</code>
+  (<code>address__city</code>), the source path with <code>.</code> (<code>address.city</code>). Renaming one
+  segment (e.g. <code>Filterable(source="addr")</code> on the embedding field) only
+  changes that segment; descendants still compose normally on top of it
+  (<code>addr.city</code>).</li>
+<li><strong><code>FilterConfig.exclude</code> is path-based, not string-based.</strong> An entry
+  matches a field's full public path prefix by segment (<code>exclude=["address"]</code>
+  removes <code>address</code> and its whole subtree), never by literal string
+  prefixing — so a top-level field that happens to be named
+  <code>"address__city"</code> is unaffected by an <code>exclude=["address"]</code> entry naming
+  the nested subtree. The same rule applies to <code>FilterConfig.operators</code> and
+  <code>FilterConfig.sortable</code>: all three are keyed by the field's public,
+  <code>separator</code>-joined dotted-param spelling (<code>"address__city"</code>), the same
+  spelling a client would use in the URL.</li>
 <li><strong>Explicit source override</strong> for when the Mongo field differs from the model:</li>
 </ul>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="n">age</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">Filterable</span><span class="p">(</span><span class="n">source</span><span class="o">=</span><span class="s2">&quot;ageYears&quot;</span><span class="p">)]</span>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="n">age</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">Filterable</span><span class="p">(</span><span class="n">source</span><span class="o">=</span><span class="s2">&quot;ageYears&quot;</span><span class="p">)]</span>
 </span></code></pre></div>
 <p><code>?age__gte=21</code> → <code>{"ageYears": {"$gte": 21}}</code>.</p>
 <ul>
 <li><strong>Custom parameter name</strong> (decouple URL from field):</li>
 </ul>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="n">age</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">Filterable</span><span class="p">(</span><span class="n">param</span><span class="o">=</span><span class="s2">&quot;minimum_age&quot;</span><span class="p">,</span> <span class="n">ops</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;gte&quot;</span><span class="p">])]</span>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="n">age</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">Filterable</span><span class="p">(</span><span class="n">param</span><span class="o">=</span><span class="s2">&quot;minimum_age&quot;</span><span class="p">,</span> <span class="n">ops</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;gte&quot;</span><span class="p">])]</span>
 </span></code></pre></div>
 <hr />
 <h2 id="per-field-configurability-the-core-question-you-asked">Per-field configurability — the core question you asked<a class="headerlink" href="#per-field-configurability-the-core-question-you-asked" title="Permanent link">&para;</a></h2>
@@ -1589,14 +1667,14 @@ design provides four layers, from coarse to fine, each overriding the previous:<
    <code>regex</code>."</p>
 </li>
 </ol>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="n">FilterConfig</span><span class="p">(</span><span class="n">type_profiles</span><span class="o">=</span><span class="p">{</span><span class="nb">str</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;eq&quot;</span><span class="p">,</span> <span class="s2">&quot;contains&quot;</span><span class="p">,</span> <span class="s2">&quot;icontains&quot;</span><span class="p">]})</span>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-9-1"><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="n">FilterConfig</span><span class="p">(</span><span class="n">type_profiles</span><span class="o">=</span><span class="p">{</span><span class="nb">str</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;eq&quot;</span><span class="p">,</span> <span class="s2">&quot;contains&quot;</span><span class="p">,</span> <span class="s2">&quot;icontains&quot;</span><span class="p">]})</span>
 </span></code></pre></div>
 <ol>
 <li><strong>Per-field inline (<code>Annotated</code>).</strong> Wins over type-level.</li>
 </ol>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-9-1"><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="n">email</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Filterable</span><span class="p">(</span><span class="n">ops</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;eq&quot;</span><span class="p">])]</span>           <span class="c1"># exact-match only</span>
-</span><span id="__span-9-2"><a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a><span class="n">bio</span><span class="p">:</span>   <span class="n">Annotated</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Filterable</span><span class="p">(</span><span class="n">ops</span><span class="o">=</span><span class="n">ops</span><span class="o">.</span><span class="n">NONE</span><span class="p">)]</span>         <span class="c1"># explicitly unfilterable</span>
-</span><span id="__span-9-3"><a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a><span class="n">score</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">Filterable</span><span class="p">(</span><span class="n">ops</span><span class="o">=</span><span class="n">ops</span><span class="o">.</span><span class="n">ALL</span><span class="p">)]</span>          <span class="c1"># everything int supports</span>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-10-1"><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="n">email</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Filterable</span><span class="p">(</span><span class="n">ops</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;eq&quot;</span><span class="p">])]</span>           <span class="c1"># exact-match only</span>
+</span><span id="__span-10-2"><a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a><span class="n">bio</span><span class="p">:</span>   <span class="n">Annotated</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Filterable</span><span class="p">(</span><span class="n">ops</span><span class="o">=</span><span class="n">ops</span><span class="o">.</span><span class="n">NONE</span><span class="p">)]</span>         <span class="c1"># explicitly unfilterable</span>
+</span><span id="__span-10-3"><a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a><span class="n">score</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">Filterable</span><span class="p">(</span><span class="n">ops</span><span class="o">=</span><span class="n">ops</span><span class="o">.</span><span class="n">ALL</span><span class="p">)]</span>          <span class="c1"># everything int supports</span>
 </span></code></pre></div>
 <ol>
 <li><strong>Per-field on the route.</strong> Wins over everything, including the field's own
@@ -1604,16 +1682,16 @@ design provides four layers, from coarse to fine, each overriding the previous:<
    The shipped spelling is the route-level mapping, keyed by public parameter
    name:</li>
 </ol>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-10-1"><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="n">FilterConfig</span><span class="p">(</span><span class="n">operators</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;startswith&quot;</span><span class="p">],</span> <span class="s2">&quot;age&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;gte&quot;</span><span class="p">,</span> <span class="s2">&quot;lte&quot;</span><span class="p">]})</span>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-11-1"><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="n">FilterConfig</span><span class="p">(</span><span class="n">operators</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;startswith&quot;</span><span class="p">],</span> <span class="s2">&quot;age&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;gte&quot;</span><span class="p">,</span> <span class="s2">&quot;lte&quot;</span><span class="p">]})</span>
 </span></code></pre></div>
 <p>A <code>FilterSet</code>'s <code>fields</code> mapping (Stage 3) occupies this same layer, and is
    also where custom/computed filters live:</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-11-1"><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="k">class</span><span class="w"> </span><span class="nc">UserFilter</span><span class="p">(</span><span class="n">FilterSet</span><span class="p">):</span>
-</span><span id="__span-11-2"><a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>    <span class="k">class</span><span class="w"> </span><span class="nc">Meta</span><span class="p">:</span>
-</span><span id="__span-11-3"><a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a>        <span class="n">model</span> <span class="o">=</span> <span class="n">User</span>
-</span><span id="__span-11-4"><a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a>        <span class="n">fields</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;contains&quot;</span><span class="p">],</span> <span class="s2">&quot;age&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;gte&quot;</span><span class="p">,</span> <span class="s2">&quot;lte&quot;</span><span class="p">]}</span>
-</span><span id="__span-11-5"><a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a>    <span class="c1"># custom filter not derivable from a single field:</span>
-</span><span id="__span-11-6"><a id="__codelineno-11-6" name="__codelineno-11-6" href="#__codelineno-11-6"></a>    <span class="n">active_since</span> <span class="o">=</span> <span class="n">DateFilter</span><span class="p">(</span><span class="n">field</span><span class="o">=</span><span class="s2">&quot;last_login&quot;</span><span class="p">,</span> <span class="n">op</span><span class="o">=</span><span class="s2">&quot;gte&quot;</span><span class="p">)</span>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-12-1"><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a><span class="k">class</span><span class="w"> </span><span class="nc">UserFilter</span><span class="p">(</span><span class="n">FilterSet</span><span class="p">):</span>
+</span><span id="__span-12-2"><a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>    <span class="k">class</span><span class="w"> </span><span class="nc">Meta</span><span class="p">:</span>
+</span><span id="__span-12-3"><a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a>        <span class="n">model</span> <span class="o">=</span> <span class="n">User</span>
+</span><span id="__span-12-4"><a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a>        <span class="n">fields</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;contains&quot;</span><span class="p">],</span> <span class="s2">&quot;age&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;gte&quot;</span><span class="p">,</span> <span class="s2">&quot;lte&quot;</span><span class="p">]}</span>
+</span><span id="__span-12-5"><a id="__codelineno-12-5" name="__codelineno-12-5" href="#__codelineno-12-5"></a>    <span class="c1"># custom filter not derivable from a single field:</span>
+</span><span id="__span-12-6"><a id="__codelineno-12-6" name="__codelineno-12-6" href="#__codelineno-12-6"></a>    <span class="n">active_since</span> <span class="o">=</span> <span class="n">DateFilter</span><span class="p">(</span><span class="n">field</span><span class="o">=</span><span class="s2">&quot;last_login&quot;</span><span class="p">,</span> <span class="n">op</span><span class="o">=</span><span class="s2">&quot;gte&quot;</span><span class="p">)</span>
 </span></code></pre></div>
 <p>Two rules pin down how the ladder interacts with the safety gates (settled by
 the implementation, now normative):</p>
