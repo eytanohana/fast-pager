@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!--
+    fast-pager favicon: a filter (shrinking bars) over a pager (dots,
+    current page emphasized). Indigo -> teal echoes the site palette and
+    the FastAPI ecosystem.
+  -->
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="64" y2="64" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#4f46e5"/>
+      <stop offset="1" stop-color="#0d9488"/>
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="14" fill="url(#g)"/>
+  <!-- filter: shrinking bars -->
+  <rect x="14" y="13" width="36" height="7" rx="3.5" fill="#fff"/>
+  <rect x="20" y="25" width="24" height="7" rx="3.5" fill="#fff"/>
+  <rect x="26" y="37" width="12" height="7" rx="3.5" fill="#fff"/>
+  <!-- pager: dots, middle = current page -->
+  <circle cx="22.5" cy="52.5" r="3" fill="#fff" opacity="0.45"/>
+  <circle cx="32" cy="52.5" r="3.5" fill="#fff"/>
+  <circle cx="41.5" cy="52.5" r="3" fill="#fff" opacity="0.45"/>
+</svg>

@@ -69,6 +69,10 @@ nav = [
 # https://zensical.org/docs/setup/language/
 language = "en"
 
+# Custom favicon (SVG: filter bars + pager dots, indigo->teal).
+# https://zensical.org/docs/setup/logo-and-icons/#favicon
+favicon = "assets/favicon.svg"
+
 # https://zensical.org/docs/setup/logo-and-icons
 [project.theme.icon]
 logo = "lucide/list-filter-plus"
