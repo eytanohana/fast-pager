@@ -32,3 +32,24 @@ def test_bare_string_ops_rejected():
 def test_empty_names_rejected(kwargs):
     with pytest.raises(ConfigurationError, match="non-empty"):
         Filterable(**kwargs)
+
+
+def test_keys_accepts_a_sequence_of_safe_names():
+    assert Filterable(keys=["region", "tier"]).keys == ["region", "tier"]
+    assert Filterable().keys is None
+
+
+def test_bare_string_keys_rejected():
+    with pytest.raises(ConfigurationError, match="bare string"):
+        Filterable(keys="region")
+
+
+@pytest.mark.parametrize("key", ["", "a.b", "a$b", "$region", "a\x00b", 7])
+def test_unsafe_map_keys_rejected(key):
+    with pytest.raises(ConfigurationError, match="invalid map key"):
+        Filterable(keys=[key])
+
+
+def test_duplicate_map_keys_rejected():
+    with pytest.raises(ConfigurationError, match="duplicate map key 'region'"):
+        Filterable(keys=["region", "tier", "region"])

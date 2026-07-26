@@ -83,12 +83,20 @@ class Filterable:
             naming the field in ``FilterConfig.sortable`` raises
             :class:`~fast_pager.errors.ConfigurationError`. ``None`` defers
             to the default (sortable iff filterable) or the config allow-list.
+        keys: For ``dict[str, T]`` fields only: the enumerated map keys that
+            get typed value-at-key parameters (``keys=["region"]`` generates
+            ``metadata__region``, typed ``T``, compiling to
+            ``{"metadata.region": value}``). Keys must be non-empty and free
+            of ``.``, ``$``, and null bytes — they become segments of a
+            backend field path. Setting ``keys`` on a non-map field raises
+            :class:`~fast_pager.errors.ConfigurationError` at registration.
     """
 
     ops: Sequence[str] | OpsMarker | None = None
     source: str | None = None
     param: str | None = None
     sortable: bool | None = None
+    keys: Sequence[str] | None = None
 
     def __post_init__(self) -> None:
         """Validate the shape of the metadata eagerly, at construction."""
@@ -103,3 +111,25 @@ class Filterable:
             raise ConfigurationError("Filterable(source=...) must be a non-empty string")
         if self.param is not None and not self.param:
             raise ConfigurationError("Filterable(param=...) must be a non-empty string")
+        if self.keys is not None:
+            self._validate_keys(self.keys)
+
+    @staticmethod
+    def _validate_keys(keys: Sequence[str] | str) -> None:
+        if isinstance(keys, str):
+            # Same trap as ops: a bare string would iterate as characters.
+            raise ConfigurationError(
+                f"Filterable(keys=...) takes a sequence of key names, got the bare string {keys!r}"
+            )
+        seen: set[str] = set()
+        for key in keys:
+            # Keys become segments of a backend field path (`metadata.region`),
+            # so path metacharacters are configuration errors.
+            if not isinstance(key, str) or not key or "." in key or "$" in key or "\x00" in key:
+                raise ConfigurationError(
+                    f"invalid map key {key!r} in Filterable(keys=...): keys must be "
+                    "non-empty and must not contain '.', '$', or null bytes"
+                )
+            if key in seen:
+                raise ConfigurationError(f"duplicate map key {key!r} in Filterable(keys=...)")
+            seen.add(key)
