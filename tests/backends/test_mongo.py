@@ -123,6 +123,22 @@ def test_same_field_conditions_merge_into_one_subdocument():
     assert result == {"age": {"$gte": 21, "$lt": 65}, "name": {"$regex": "x"}}
 
 
+def test_dotted_field_names_merge_like_flat_ones():
+    # Nested (Phase 3b) sources are dotted paths; the compiler treats them
+    # as opaque keys, so same-path conditions merge into one sub-document.
+    result = where(
+        Condition("address.geo.lat", "gte", 1.0),
+        Condition("address.geo.lat", "lt", 2.0),
+        Condition("address.city", "eq", "ams"),
+        Condition("address.tags", "has", "home"),
+    )
+    assert result == {
+        "address.geo.lat": {"$gte": 1.0, "$lt": 2.0},
+        "address.city": "ams",
+        "address.tags": "home",
+    }
+
+
 def test_eq_merged_with_other_ops_keeps_dollar_eq():
     assert where(Condition("age", "eq", 5), Condition("age", "lt", 10)) == {
         "age": {"$eq": 5, "$lt": 10}

@@ -5,7 +5,7 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from pydantic import BaseModel
 
-from conftest import Aliased, Curated, Tagged, User
+from conftest import Aliased, Curated, Customer, Tagged, User
 from fast_pager import ConfigurationError, FilterConfig, FilterDepends, FilterQuery
 
 
@@ -321,6 +321,88 @@ def test_openapi_shows_typed_array_params():
     assert "tags" not in params  # no bare-eq sugar for arrays
     assert "tags__contains" not in params
     assert "tags__len__gte" not in params  # full tier
+
+
+# ---------------------------------------------------------------------------
+# Phase 3b: nested Pydantic models end to end.
+# ---------------------------------------------------------------------------
+
+
+def test_nested_request_compiles_to_dotted_paths_and_merges_subdocuments():
+    client = make_app(target=Customer)
+    r = client.get(
+        "/items",
+        params=[
+            ("address__city__contains", "ams"),
+            ("address__geo__lat__gte", "1.5"),
+            ("address__geo__lat__lt", "3.5"),
+            ("billing__isnull", "false"),
+        ],
+    )
+    assert r.status_code == 200
+    assert r.json()["mongo"] == {
+        "address.city": {"$regex": "ams"},
+        "address.geo.lat": {"$gte": 1.5, "$lt": 3.5},
+        "billing": {"$ne": None},
+    }
+
+
+def test_nested_array_and_source_rename_compile_end_to_end():
+    client = make_app(target=Customer)
+    r = client.get("/items", params={"address__tags__has": "home", "address__zip_code": "1012"})
+    assert r.status_code == 200
+    assert r.json()["mongo"] == {"address.tags": "home", "address.zip": "1012"}
+
+
+def test_nested_sorting_compiles_to_the_dotted_source():
+    client = make_app(target=Customer)
+    r = client.get("/items", params={"sort": "-address__city,name"})
+    assert r.status_code == 200
+    assert r.json()["sort"] == [["address.city", -1], ["name", 1]]
+
+
+def test_nested_bad_values_return_422():
+    client = make_app(target=Customer)
+    assert client.get("/items", params={"address__geo__lat__gte": "high"}).status_code == 422
+    assert client.get("/items", params={"sort": "address"}).status_code == 422  # embedding
+    assert client.get("/items", params={"sort": "address__tags"}).status_code == 422  # array
+
+
+def test_strict_mode_rejects_params_beyond_the_depth_bound():
+    class L3(BaseModel):
+        x: int
+
+    class L2(BaseModel):
+        l3: L3
+
+    class L1(BaseModel):
+        l2: L2
+
+    class Root(BaseModel):
+        l1: L1
+
+    client = make_app(target=Root, config=FilterConfig(unknown_params="strict"))
+    assert client.get("/items", params={"l1__l2__l3__x": "1"}).status_code == 422
+
+
+def test_nested_subtree_exclusion_end_to_end():
+    client = make_app(target=Customer, config=FilterConfig(exclude=["billing"]))
+    r = client.get("/items", params={"billing__city": "x", "name": "a"})
+    assert r.status_code == 200
+    assert r.json()["applied"] == [["name", "eq"]]
+
+
+def test_openapi_shows_typed_nested_params():
+    client = make_app(target=Customer)
+    spec = client.get("/openapi.json").json()
+    params = {p["name"]: p for p in spec["paths"]["/items"]["get"]["parameters"]}
+    assert params["address__city__contains"]["schema"]["anyOf"][0]["type"] == "string"
+    assert params["address__geo__lat__gte"]["schema"]["anyOf"][0]["type"] == "number"
+    assert params["billing__isnull"]["schema"]["anyOf"][0]["type"] == "boolean"
+    assert params["address__tags__has"]["schema"]["anyOf"][0]["type"] == "string"
+    assert "address__geo__lat" in params  # bare-eq sugar for nested leaves
+    assert "address" not in params  # non-nullable embedding: no params of its own
+    assert "address__isnull" not in params
 
 
 def test_openapi_reflects_param_rename_and_curated_ops():
