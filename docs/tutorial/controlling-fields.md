@@ -4,11 +4,6 @@ icon: lucide/sliders-horizontal
 
 # Controlling the filter surface
 
-!!! warning "Targeting v0.0.3"
-    This page describes the per-field control API shipping in `v0.0.3`
-    (Stage 2). See the [Changelog](../changelog.md) for what's actually
-    released.
-
 Zero-config `FilterDepends(Model)` exposes every supported field with its
 type's `safe` operator profile. That's the right starting point — but real
 APIs need to curate: exact-match-only emails, unfilterable secrets, a Mongo

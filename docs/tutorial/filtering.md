@@ -4,10 +4,6 @@ icon: lucide/list-filter
 
 # Filtering
 
-!!! warning "Targeting v0.1.0"
-    This tutorial describes the `v0.1.0` API. See
-    [Getting Started](../getting-started.md) for install status.
-
 ## The `field__op` convention
 
 `fast-pager` uses Django's double-underscore convention to name query

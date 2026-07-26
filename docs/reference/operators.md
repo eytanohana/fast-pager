@@ -4,12 +4,13 @@ icon: lucide/table
 
 # Operator Reference
 
-!!! warning "Targeting v0.1.0 — scalar types only"
-    `v0.1.0` supports the **scalar types** below. Compound types — `list[T]`,
-    nested Pydantic models, `dict[str, T]` and arrays of nested models — are
-    designed (see [design doc 02](../design/02-type-and-operator-system.md))
-    but land in **`v0.3.0`** together with `FilterSet`. This page tracks the
-    scalar tables only; it will grow compound-type tables once those ship.
+!!! note "Scalar types only (for now)"
+    The current release supports the **scalar types** below. Compound types —
+    `list[T]`, nested Pydantic models, `dict[str, T]` and arrays of nested
+    models — are designed (see
+    [design doc 02](../design/02-type-and-operator-system.md)) but land in
+    **`v0.2.0`** together with `FilterSet`. This page tracks the scalar
+    tables only; it will grow compound-type tables once those ship.
 
 Every operator set below is the *default* for its type — the **`safe`**
 profile. Operators listed under **`full`** are additional operators

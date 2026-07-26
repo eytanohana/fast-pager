@@ -4,12 +4,12 @@ icon: lucide/rocket
 
 # Getting Started
 
-!!! note "Pre-`0.1` API"
-    Everything on this page works on the current `0.0.x` releases (see the
-    [Changelog](changelog.md) for exactly what each version shipped). The API
-    is still stabilizing toward `v0.1.0` per the
-    [development plan](https://github.com/eytanohana/fast-pager/blob/main/DEVELOPMENT_PLAN.md),
-    so minor breaking changes are possible between `0.0.x` versions.
+!!! note "Pre-`1.0` API"
+    Everything on this page works on the current release (see the
+    [Changelog](changelog.md) for exactly what each version shipped). The
+    API is still pre-1.0, so per [SemVer](https://semver.org/) breaking
+    changes are possible and bump the minor version — they are always
+    called out in the release notes.
 
 ## Install
 

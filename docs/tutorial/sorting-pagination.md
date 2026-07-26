@@ -4,10 +4,6 @@ icon: lucide/arrow-up-down
 
 # Sorting & Pagination
 
-!!! warning "Targeting v0.1.0"
-    This tutorial describes the `v0.1.0` API. See
-    [Getting Started](../getting-started.md) for install status.
-
 Sorting and pagination ride on the same `FilterDepends(...)` dependency as
 filtering — they're the other two hats a list endpoint wears (see
 [the overview](../design/00-overview.md#why-the-name-is-fast-pager)), so they
@@ -92,7 +88,7 @@ The exact count is not free on a large collection, so `paginate(...)` will
 take a `total="exact" | "estimated" | "none"` knob rather than always
 running a `count_documents`. This ships in a later stage (see the
 [roadmap](../design/05-roadmap-and-release.md)) — `to_mongo()` /
-`sort_mongo()` / `skip` / `limit` are the `v0.1.0` building blocks and remain
+`sort_mongo()` / `skip` / `limit` are the shipped building blocks and remain
 available regardless.
 
 ## Next

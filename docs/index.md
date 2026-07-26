@@ -14,12 +14,11 @@ and generates **type-safe query parameters** for filtering, sorting and
 pagination. Those parameters show up in your OpenAPI docs for free, and
 compile down to a real database query (MongoDB first, more backends later).
 
-!!! warning "Targeting the v0.1 release"
-    `fast-pager` is under active development — the current PyPI release is a
-    `0.0.x` placeholder. Everything on this site describes the **upcoming
-    `v0.1.0`** API as specified in the [design documents](design/index.md) and
-    the [development plan](https://github.com/eytanohana/fast-pager/blob/main/DEVELOPMENT_PLAN.md).
-    See the [Changelog](changelog.md) for the current, real status.
+!!! info "Shipped and installable"
+    Everything on this site describes the **shipped `0.1.0` API** — install
+    it from PyPI and it works as documented. `fast-pager` is still pre-1.0:
+    per [SemVer](https://semver.org/), breaking changes bump the minor
+    version and are called out in the [Changelog](changelog.md).
 
 ```python
 class User(BaseModel):
@@ -137,6 +136,8 @@ GET /users?name__contains=ana&age__gte=21&age__lt=65&sort=-age&limit=20
 
 ## Project status
 
-`fast-pager` is in the **design phase** — see the
+`fast-pager` is under **active development**. The `0.1.0` release ships
+Stages 1–2 in full — zero-config scalar filtering, the Mongo compiler,
+sorting and pagination, and per-field `Filterable(...)` control. See the
 [README](https://github.com/eytanohana/fast-pager#status) for the current
-state and the [Changelog](changelog.md) for what has actually shipped.
+state and the [Changelog](changelog.md) for what each version shipped.

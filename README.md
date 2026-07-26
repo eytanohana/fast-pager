@@ -48,11 +48,12 @@ Claude Code). Design documents and code are AI-generated and human-reviewed.
 
 ## Status
 
-`fast-pager` is under **active development** on the `0.0.x` series: the
-zero-config scalar filtering pipeline, Mongo compiler, and per-field
-`Filterable(...)` control shown above are implemented and released. The API
-is still stabilizing toward `0.1.0` — minor breaking changes are possible
-between `0.0.x` versions. See the
+`fast-pager` is under **active development**. The `0.1.0` release ships
+Stages 1–2 in full: the zero-config scalar filtering pipeline, Mongo
+compiler, sorting/pagination, and per-field `Filterable(...)` control shown
+above — and the documentation describes exactly the shipped API. The project
+is still pre-1.0: per SemVer, breaking changes bump the minor version and
+are called out in release notes. See the
 [changelog](https://fast-pager.eytanohana.com/latest/changelog/) for exactly
 what each version shipped.
 
@@ -90,8 +91,8 @@ exactly one place.
 
 ## Design documents
 
-This repository currently contains **only the product design** — no implementation yet.
-Read the docs in order:
+These are the product-design documents the implementation is built from.
+Read them in order:
 
 | # | Document | What it covers |
 |---|----------|----------------|
