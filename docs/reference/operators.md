@@ -10,9 +10,9 @@ icon: lucide/table
     paths, **arrays of nested models** (`list[NestedModel]` via `elem` →
     `$elemMatch`), and **`dict[str, T]` maps** (explicitly enabled, key
     presence + enumerated keys). That completes the type tables of
-    [design doc 02](../design/02-type-and-operator-system.md); the
-    `FilterSet` class (allow-list filter surfaces per model) lands in
-    **`v0.2.0`**.
+    [design doc 02](../design/02-type-and-operator-system.md). Allow-list
+    filter surfaces per model are covered by the
+    [`FilterSet` tutorial](../tutorial/filtersets.md).
 
 Every operator set below is the *default* for its type — the **`safe`**
 profile. Operators listed under **`full`** are additional operators
@@ -289,8 +289,9 @@ class User(BaseModel):
   request-time `metadata__<anything>`; un-enumerated spellings are unknown
   parameters (a 422 in strict mode). Each enumerated key gets a typed,
   `eq`-only parameter (`metadata__region` / `metadata__region__eq`);
-  configuring any other operator on it is a `ConfigurationError`. Richer
-  per-key operator sets may come with `FilterSet`.
+  configuring any other operator on it is a `ConfigurationError`. The rule
+  is the same in a [`FilterSet`](../tutorial/filtersets.md): an enumerated
+  key path may be allow-listed, but stays `eq`-only.
 - **Type constraints are enforced at registration**: `Filterable` on a bare
   `dict`, a non-`str` key type, or an unsupported value type raises
   `ConfigurationError`, as does `Filterable(keys=[...])` on a non-map field.

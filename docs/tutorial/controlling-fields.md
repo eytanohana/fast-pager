@@ -149,7 +149,9 @@ Four layers, finest wins (design doc 02):
 | 2. `FilterConfig(type_profiles={T: [...]})` | route | every field of type `T` |
 | 1. `FilterConfig(default_profile=...)` | route | everything |
 
-Two absolutes sit outside the ladder: `Filterable(ops=ops.NONE)` and
+A [`FilterSet`](filtersets.md)'s `fields` mapping occupies the same layer 4
+(and replaces `FilterConfig.operators` on FilterSet routes). Two absolutes
+sit outside the ladder: `Filterable(ops=ops.NONE)` and
 `Filterable(sortable=False)` cannot be overridden by any config — model-level
 opt-outs are a security posture, not a default.
 
@@ -200,7 +202,10 @@ never rejected, because your route may legitimately declare its own
 
 ## Next
 
-The [Operator Reference](../reference/operators.md) lists every operator
+When curating with `Filterable` and `FilterConfig` stops being enough —
+public APIs, multiple filter surfaces per model — graduate to an allow-list
+[`FilterSet`](filtersets.md). The
+[Operator Reference](../reference/operators.md) lists every operator
 each type supports — the vocabulary `ops=[...]` and `type_profiles` draw
 from. For the design rationale behind the layering, see
 [design doc 02](../design/02-type-and-operator-system.md#per-field-configurability-the-core-question-you-asked).

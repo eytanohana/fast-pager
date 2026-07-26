@@ -44,6 +44,7 @@ nav = [
       "tutorial/filtering.md",
       "tutorial/sorting-pagination.md",
       "tutorial/controlling-fields.md",
+      "tutorial/filtersets.md",
   ] },
   { "Reference" = [
       "reference/operators.md",

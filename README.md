@@ -37,6 +37,19 @@ GET /users?name__contains=ana&age__gte=21&age__lt=65&sort=-age&limit=20
 
 …and every one of those parameters is documented, validated and typed in `/docs`.
 
+Need a curated public surface? Declare an allow-list `FilterSet` — anything
+not listed is not filterable — and the call site doesn't change:
+
+```python
+class UserFilter(FilterSet):
+    class Meta:
+        model  = User
+        fields = {"name": ["contains"], "age": ["gte", "lte"]}
+
+@app.get("/users")
+async def list_users(q: FilterQuery[User] = FilterDepends(UserFilter)): ...
+```
+
 ---
 
 ## Built with AI

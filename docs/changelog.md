@@ -10,6 +10,40 @@ below. See the [Roadmap](design/05-roadmap-and-release.md) for what's coming
 next, and the [development plan](https://github.com/eytanohana/fast-pager/blob/main/DEVELOPMENT_PLAN.md)
 for the execution detail behind each stage.
 
+## `0.2.0` — Stage 3 complete: `FilterSet` + example app
+
+Stage 3 caps off with **`FilterSet`** (design doc 01 Option B): a
+declarative class holding a **strict allow-list** filter surface apart from
+the model — `Meta.model` plus a `fields` mapping keyed by public dotted
+param names, where **anything not listed is not filterable** (the safe
+posture for public APIs). Values are exact operator lists (or `"__all__"` /
+`ops.ALL` for everything the type supports, still `allow_regex`-gated),
+validated **at class definition** with the usual rich `ConfigurationError`.
+The mapping occupies layer 4 of the precedence ladder — the same layer as
+`FilterConfig.operators`, which it replaces on FilterSet routes (that knob,
+`exclude`, and `sortable` are rejected inside `Meta.config`; `Meta.sortable`
+is the sortable allow-list, and the sortable default becomes "listed and
+scalar") — and the model-level absolutes (`ops.NONE`, `sortable=False`)
+remain final. **Custom declared filters** add parameters no generated name
+covers: `active_since = Filter(field="last_login", op="gte")` — attribute
+name (or `param=`) as the public name, value typed by the target field +
+operator, compiled through the normal AST path, inheritable via abstract
+(`Meta`-less) base classes. `FilterDepends(UserFilter)` returns the same
+uniform `FilterQuery` as the zero-config and `Filterable` paths — call
+sites never change — and multiple FilterSets per model (public vs. admin)
+coexist trivially. A runnable example app (users + addresses + tags +
+orders + metadata map, all three declaration styles, no MongoDB needed)
+ships under `examples/mongo_app/` and is exercised in CI.
+
+That completes the whole `0.1.x` → `0.2.0` arc — Stage 3 grew the type
+system from flat scalars to the full compound surface: arrays of scalars
+(`0.1.1`), nested models via dotted paths (`0.1.2`), arrays of nested
+models (`elem` → single `$elemMatch`) and `dict[str, T]` maps (`0.1.3`),
+and now allow-list filter surfaces (`0.2.0`). Strictly additive: no
+behavior changes to anything shipped in `0.1.3`. See the new
+[FilterSet tutorial](tutorial/filtersets.md). 100% test coverage,
+`mypy --strict` clean.
+
 ## `0.1.3` — Stage 3 checkpoint: arrays of nested models + maps
 
 The compound-type tables of design doc 02 are now complete. **Arrays of
@@ -133,8 +167,8 @@ installable against `0.0.1` — see [Getting Started](getting-started.md).
 
 ## Coming next
 
-The `FilterSet` class caps Stage 3 in **`v0.2.0`**: an allow-list `fields`
-mapping per filter surface, multiple filter surfaces per model, and custom
-declared filters — plus a non-trivial example app (users + addresses +
-tags + orders) exercised in CI. Tracked in
+Stage 4 ships the response envelope in **`v0.3.0`**: an opt-in generic
+`Page[T]` model with `q.paginate(collection, total="exact|estimated|none")`
+(count cost as a knob, correct OpenAPI schema), plus the `page`/`page_size`
+strategy as sugar over offset. Tracked in
 [design doc 05 — Roadmap & Release Plan](design/05-roadmap-and-release.md).
