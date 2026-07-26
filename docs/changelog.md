@@ -10,6 +10,16 @@ below. See the [Roadmap](design/05-roadmap-and-release.md) for what's coming
 next, and the [development plan](https://github.com/eytanohana/fast-pager/blob/main/DEVELOPMENT_PLAN.md)
 for the execution detail behind each stage.
 
+## `0.1.0` — first minor release: Stages 1–2 finalized
+
+Stages 1–2 are complete and consolidated: the core filter → sort → paginate
+pipeline, the MongoDB query compiler, zero-config `FilterQuery[Model]` /
+`FilterDepends(Model)` for scalar fields, per-field `Filterable(...)`
+control, per-type profiles, strict mode, and this documentation site. No
+functional changes from `0.0.3` — this release is the polish milestone:
+every page on this site now describes exactly the shipped, installable API,
+with the "not released yet" caveats retired.
+
 ## `0.0.3` — Stage 2 checkpoint: per-field control
 
 The filter surface is now curatable. `Annotated[T, Filterable(...)]`
@@ -48,12 +58,11 @@ the repository has CI + fully automated release tooling
 but **no library functionality yet**. Nothing in this documentation site is
 installable against `0.0.1` — see [Getting Started](getting-started.md).
 
-## Coming in `v0.1.0`
+## Coming in `v0.2.0`
 
-Stages 1–2 finalized: the core filter → sort → paginate pipeline, the
-MongoDB query compiler, zero-config `FilterQuery[Model]` /
-`FilterDepends(Model)` for scalar fields, per-field `Filterable(...)`
-control, per-type profiles, strict mode, and this documentation site —
-polished, with the docs describing exactly the shipped API. Most of the
-content on this site describes this upcoming release. Tracked in
+Stage 3: the `FilterSet` class (allow-list `fields` mapping, multiple filter
+surfaces per model, custom declared filters) and compound types —
+`list[scalar]` (`has`, `has_any`, `has_all`, `len__*`, `empty`), nested
+models via dotted paths, `dict` with enumerated keys, and `list[Nested]`
+element matching via `elem` → `$elemMatch`. Tracked in
 [design doc 05 — Roadmap & Release Plan](design/05-roadmap-and-release.md).
