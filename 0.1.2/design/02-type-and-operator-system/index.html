@@ -1,0 +1,1761 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Turn your Pydantic models into filterable, sortable, paginated FastAPI query parameters — automatically.">
+      
+      
+        <meta name="author" content="Eytan Ohana">
+      
+      
+        <link rel="canonical" href="https://fast-pager.eytanohana.com/0.1.2/design/02-type-and-operator-system/">
+      
+      
+        <link rel="prev" href="../01-developer-experience/">
+      
+      
+        <link rel="next" href="../03-architecture/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="zensical-0.0.51">
+    
+    
+      
+        <title>02 — Type & Operator System - fast-pager</title>
+      
+    
+    
+      
+        
+      
+      <link rel="stylesheet" href="../../assets/stylesheets/modern/main.62c9b9cc.min.css">
+      
+        
+          
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/modern/palette.dfe2e883.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Inter:300,300i,400,400i,500,500i,700,700i%7CJetBrains+Mono:400,400i,700,700i&amp;display=fallback">
+        <style>:root{--md-text-font:"Inter";--md-code-font:"JetBrains Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../..",location),__md_scope.pathname.endsWith("/")||(__md_scope=new URL(__md_scope.pathname+"/",location)),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,_=__md_scope)=>JSON.parse(t.getItem(_.pathname+"."+e)),__md_set=(e,t,_=localStorage,a=__md_scope)=>{try{_.setItem(a.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer" aria-label="Navigation"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#02-type-operator-system" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+      <div data-md-color-scheme="default" data-md-component="outdated" hidden>
+        
+      </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="fast-pager" class="md-header__button md-logo" aria-label="fast-pager" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-list-filter-plus" viewBox="0 0 24 24"><path d="M12 5H2M6 12h12M9 19h6M16 5h6M19 8V2"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer" aria-label="Navigation">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-menu" viewBox="0 0 24 24"><path d="M4 5h16M4 12h16M4 19h16"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            fast-pager
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              02 — Type &amp; Operator System
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-moon" viewBox="0 0 24 24"><path d="M20.985 12.486a9 9 0 1 1-9.473-9.472c.405-.022.617.46.402.803a6 6 0 0 0 8.268 8.268c.344-.215.825-.004.803.401"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search" aria-label="Search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-search" viewBox="0 0 24 24"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog" aria-label="Search">
+  <button type="button" class="md-search__button">
+    Search
+  </button>
+</div>
+      
+    
+    <div class="md-header__source">
+      
+        <a href="https://github.com/eytanohana/fast-pager" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2026 Fonticons, Inc.--><path fill="currentColor" d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    eytanohana/fast-pager
+  </div>
+</a>
+      
+    </div>
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="fast-pager" class="md-nav__button md-logo" aria-label="fast-pager" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-list-filter-plus" viewBox="0 0 24 24"><path d="M12 5H2M6 12h12M9 19h6M16 5h6M19 8V2"/></svg>
+
+    </a>
+    fast-pager
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/eytanohana/fast-pager" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2026 Fonticons, Inc.--><path fill="currentColor" d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    eytanohana/fast-pager
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-list-filter-plus" viewBox="0 0 24 24"><path d="M12 5H2M6 12h12M9 19h6M16 5h6M19 8V2"/></svg>
+  
+  <span class="md-ellipsis">
+    
+  
+  Home
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/" class="md-nav__link">
+        
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-rocket" viewBox="0 0 24 24"><path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09"/><path d="M9 12a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.4 22.4 0 0 1-4 2z"/><path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 .05 5 .05"/></svg>
+  
+  <span class="md-ellipsis">
+    
+  
+  Getting Started
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Tutorial
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+  Tutorial
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorial/filtering/" class="md-nav__link">
+        
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-list-filter" viewBox="0 0 24 24"><path d="M2 5h20M6 12h12M9 19h6"/></svg>
+  
+  <span class="md-ellipsis">
+    
+  
+  Filtering
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorial/sorting-pagination/" class="md-nav__link">
+        
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-arrow-up-down" viewBox="0 0 24 24"><path d="m21 16-4 4-4-4M17 20V4M3 8l4-4 4 4M7 4v16"/></svg>
+  
+  <span class="md-ellipsis">
+    
+  
+  Sorting &amp; Pagination
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorial/controlling-fields/" class="md-nav__link">
+        
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-sliders-horizontal" viewBox="0 0 24 24"><path d="M10 5H3M12 19H3M14 3v4M16 17v4M21 12h-9M21 19h-5M21 5h-7M8 10v4M8 12H3"/></svg>
+  
+  <span class="md-ellipsis">
+    
+  
+  Controlling the filter surface
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Reference
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+  Reference
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/operators/" class="md-nav__link">
+        
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-table" viewBox="0 0 24 24"><path d="M12 3v18"/><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18M3 15h18"/></svg>
+  
+  <span class="md-ellipsis">
+    
+  
+  Operator Reference
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Design
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+  Design
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../" class="md-nav__link">
+        
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-compass" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m16.24 7.76-1.804 5.411a2 2 0 0 1-1.265 1.265L7.76 16.24l1.804-5.411a2 2 0 0 1 1.265-1.265z"/></svg>
+  
+  <span class="md-ellipsis">
+    
+  
+  Design Documents
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../00-overview/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  00 — Overview &amp; Vision
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../01-developer-experience/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  01 — Developer Experience
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  02 — Type &amp; Operator System
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="././" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  02 — Type &amp; Operator System
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+
+<nav class="md-nav md-nav--secondary" aria-label="On this page">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      On this page
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#mental-model" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Mental model
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#scalar-types" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Scalar types
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#optionals-and-nullability" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Optionals and nullability
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#compound-types" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Compound types
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Compound types">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#listt-sett-arrays-of-scalars" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        <code>list[T]</code> / <code>set[T]</code> (arrays of scalars)
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#nested-pydantic-models-embedded-documents" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Nested Pydantic models (embedded documents)
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#parameter-matching-precise-there-is-no-request-time-parsing" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Parameter matching (precise — there is no request-time parsing)
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#listnestedmodel-arrays-of-embedded-documents" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        <code>list[NestedModel]</code> (arrays of embedded documents)
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dictstr-t-free-form-maps" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        <code>dict[str, T]</code> / free-form maps
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#uniona-b-non-optional-unions" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        <code>Union[A, B]</code> (non-optional unions)
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#field-db-name-mapping-and-aliases" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Field → DB-name mapping and aliases
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#per-field-configurability-the-core-question-you-asked" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Per-field configurability — the core question you asked
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Per-field configurability — the core question you asked">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#allow-list-vs-deny-list-semantics" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Allow-list vs deny-list semantics
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#operator-value-parsing" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Operator value parsing
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#safety-performance-defaults-that-protect-users" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Safety &amp; performance (defaults that protect users)
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../03-architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  03 — Architecture
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../04-backend-roadmap/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  04 — Backend Roadmap
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../05-roadmap-and-release/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  05 — Roadmap &amp; Release Plan
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Contributing
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+  Contributing
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../contributing/docs-site/" class="md-nav__link">
+        
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-wrench" viewBox="0 0 24 24"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.106-3.105c.32-.322.863-.22.983.218a6 6 0 0 1-8.259 7.057l-7.91 7.91a1 1 0 0 1-2.999-3l7.91-7.91a6 6 0 0 1 7.057-8.259c.438.12.54.662.219.984z"/></svg>
+  
+  <span class="md-ellipsis">
+    
+  
+  The docs site
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../changelog/" class="md-nav__link">
+        
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-history" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5M12 7v5l4 2"/></svg>
+  
+  <span class="md-ellipsis">
+    
+  
+  Changelog
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  
+                    
+                    
+                    
+                      
+                    
+                    
+                      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+                      <div class="md-sidebar-button__wrapper">
+                        <label class="md-sidebar-button" for="__toc"></label>
+                      </div>
+                    
+                  
+                  <div class="md-sidebar__inner">
+                    
+
+
+<nav class="md-nav md-nav--secondary" aria-label="On this page">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      On this page
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#mental-model" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Mental model
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#scalar-types" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Scalar types
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#optionals-and-nullability" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Optionals and nullability
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#compound-types" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Compound types
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Compound types">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#listt-sett-arrays-of-scalars" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        <code>list[T]</code> / <code>set[T]</code> (arrays of scalars)
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#nested-pydantic-models-embedded-documents" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Nested Pydantic models (embedded documents)
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#parameter-matching-precise-there-is-no-request-time-parsing" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Parameter matching (precise — there is no request-time parsing)
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#listnestedmodel-arrays-of-embedded-documents" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        <code>list[NestedModel]</code> (arrays of embedded documents)
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dictstr-t-free-form-maps" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        <code>dict[str, T]</code> / free-form maps
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#uniona-b-non-optional-unions" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        <code>Union[A, B]</code> (non-optional unions)
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#field-db-name-mapping-and-aliases" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Field → DB-name mapping and aliases
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#per-field-configurability-the-core-question-you-asked" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Per-field configurability — the core question you asked
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Per-field configurability — the core question you asked">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#allow-list-vs-deny-list-semantics" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Allow-list vs deny-list semantics
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#operator-value-parsing" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Operator value parsing
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#safety-performance-defaults-that-protect-users" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Safety &amp; performance (defaults that protect users)
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+  
+  
+
+
+<h1 id="02-type-operator-system">02 — Type &amp; Operator System<a class="headerlink" href="#02-type-operator-system" title="Permanent link">&para;</a></h1>
+<p>This is the technical heart of the product: <strong>which Python/Pydantic types we
+support, which operators each exposes, how compound types behave, and how a user
+controls all of it.</strong></p>
+<h2 id="mental-model">Mental model<a class="headerlink" href="#mental-model" title="Permanent link">&para;</a></h2>
+<p>Two registries drive everything:</p>
+<ol>
+<li><strong>Type → operator profile.</strong> Each supported type has a <em>default profile</em>: the
+   set of operators it exposes out of the box. Profiles are tiered (<code>safe</code>,
+   <code>full</code>) so we can keep dangerous operators off by default.</li>
+<li><strong>Operator → semantics.</strong> Each operator defines its value arity (single /
+   list / range), the value's relationship to the field type (same type / bool /
+   int), and how each backend adapter compiles it.</li>
+</ol>
+<p>Resolving a model field is then: <code>field type → profile → operator set</code>, with
+per-field overrides layered on top.</p>
+<hr />
+<h2 id="scalar-types">Scalar types<a class="headerlink" href="#scalar-types" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Python / Pydantic type</th>
+<th>Default operators (<code>safe</code>)</th>
+<th>Additional in <code>full</code></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>str</code></td>
+<td><code>eq</code>, <code>ne</code>, <code>in</code>, <code>nin</code>, <code>contains</code>, <code>startswith</code>, <code>endswith</code></td>
+<td><code>icontains</code>, <code>istartswith</code>, <code>iendswith</code>, <code>regex</code>, <code>text_search</code></td>
+</tr>
+<tr>
+<td><code>int</code>, <code>float</code>, <code>Decimal</code></td>
+<td><code>eq</code>, <code>ne</code>, <code>gt</code>, <code>gte</code>, <code>lt</code>, <code>lte</code>, <code>in</code>, <code>nin</code></td>
+<td><code>between</code></td>
+</tr>
+<tr>
+<td><code>bool</code></td>
+<td><code>eq</code></td>
+<td><code>ne</code></td>
+</tr>
+<tr>
+<td><code>datetime</code>, <code>date</code>, <code>time</code></td>
+<td><code>eq</code>, <code>ne</code>, <code>gt</code>, <code>gte</code>, <code>lt</code>, <code>lte</code></td>
+<td><code>between</code></td>
+</tr>
+<tr>
+<td><code>UUID</code></td>
+<td><code>eq</code>, <code>ne</code>, <code>in</code>, <code>nin</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>Enum</code> / <code>Literal[...]</code></td>
+<td><code>eq</code>, <code>ne</code>, <code>in</code>, <code>nin</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>bytes</code></td>
+<td><em>(not filterable by default)</em></td>
+<td><code>eq</code></td>
+</tr>
+</tbody>
+</table>
+<p>Notes:</p>
+<ul>
+<li><strong><code>regex</code> is <code>full</code>-only</strong> and additionally gated by a config flag, because it
+  is a ReDoS and full-scan risk. See <em>Safety</em> below.</li>
+<li><strong><code>contains</code>/<code>startswith</code>/<code>endswith</code> values are always <code>re.escape()</code>d</strong> before
+  being compiled to Mongo <code>$regex</code> (anchored for the <code>*with</code> variants). The user
+  value is a literal substring, never a pattern — without this guarantee,
+  <code>contains</code> would silently <em>be</em> the regex operator, ReDoS included. Pattern
+  matching is exclusively the job of the explicit, gated <code>regex</code> operator.</li>
+<li><strong><code>text_search</code></strong> (<code>full</code>; requires the backend capability) compiles to a real
+  text query — Mongo <code>$text</code> over a text index, <code>match</code> in Elasticsearch —
+  instead of a scanning regex. Adapters that lack it reject it at registration.</li>
+<li><strong>Case-insensitive variants</strong> (<code>i*</code>) are separate operators rather than a flag,
+  so they appear explicitly in the docs and compile to explicit backend forms.</li>
+<li><strong><code>eq</code> is implicit</strong>: a bare <code>field=</code> is treated as <code>field__eq=</code>. This keeps the
+  90% case (<code>?status=active</code>) clean.</li>
+</ul>
+<hr />
+<h2 id="optionals-and-nullability">Optionals and nullability<a class="headerlink" href="#optionals-and-nullability" title="Permanent link">&para;</a></h2>
+<p><code>Optional[T]</code> / <code>T | None</code> exposes everything <code>T</code> does <strong>plus</strong>:</p>
+<ul>
+<li><code>isnull</code> → <code>field__isnull=true|false</code> (compiles to <code>{field: None}</code> /
+  <code>{field: {$ne: None}}</code>, or <code>IS NULL</code> in SQL).</li>
+<li><code>exists</code> (Mongo-flavored; <code>full</code> only) → <code>{field: {$exists: bool}}</code>. For SQL
+  adapters <code>exists</code> aliases to <code>isnull</code> semantics or is rejected — adapters
+  declare which operators they support (doc 03/04).</li>
+</ul>
+<hr />
+<h2 id="compound-types">Compound types<a class="headerlink" href="#compound-types" title="Permanent link">&para;</a></h2>
+<p>This is where the design earns its keep. The user explicitly called out
+<code>list[str]</code>; here is the full treatment.</p>
+<h3 id="listt-sett-arrays-of-scalars"><code>list[T]</code> / <code>set[T]</code> (arrays of scalars)<a class="headerlink" href="#listt-sett-arrays-of-scalars" title="Permanent link">&para;</a></h3>
+<p>An array field needs operators about <strong>membership and shape</strong>, which are distinct
+from scalar operators. We expose a curated set:</p>
+<table>
+<thead>
+<tr>
+<th>Operator</th>
+<th>Meaning</th>
+<th>Mongo compilation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>has</code></td>
+<td>array contains this element</td>
+<td><code>{tags: "x"}</code> (Mongo matches scalar against array)</td>
+</tr>
+<tr>
+<td><code>has_any</code></td>
+<td>contains any of these</td>
+<td><code>{tags: {$in: [...]}}</code></td>
+</tr>
+<tr>
+<td><code>has_all</code></td>
+<td>contains all of these</td>
+<td><code>{tags: {$all: [...]}}</code></td>
+</tr>
+<tr>
+<td><code>len</code> (<code>len__gte</code>, etc.)</td>
+<td>array length comparison</td>
+<td><code>{tags: {$size: n}}</code> / <code>$expr</code> for ranges</td>
+</tr>
+<tr>
+<td><code>empty</code></td>
+<td>is empty / non-empty</td>
+<td>see precise spec below</td>
+</tr>
+</tbody>
+</table>
+<p>Query forms:</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>?tags__has=python
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>?tags__has_any=python,rust            # any-of
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>?tags__has_all=python,rust            # all-of
+</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>?tags__len__gte=2
+</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>?tags__empty=false
+</span></code></pre></div>
+<p>Precise <code>empty</code> semantics (empty-vs-missing is a classic Mongo trap, so we pin
+it down):</p>
+<ul>
+<li><code>?tags__empty=true</code> → the field exists <strong>and</strong> is the empty array:
+  <code>{tags: {"$eq": []}}</code> (equivalent to <code>$size: 0</code>, but index-friendlier).</li>
+<li><code>?tags__empty=false</code> → the field exists and has at least one element:
+  <code>{"tags.0": {"$exists": true}}</code>.</li>
+<li>A <strong>missing</strong> field matches neither. Use <code>isnull</code>/<code>exists</code> to reason about
+  presence; <code>empty</code> reasons only about shape. This distinction is documented on
+  the operator itself.</li>
+</ul>
+<blockquote>
+<p>Design choice: we do <strong>not</strong> silently apply scalar string operators
+(<code>contains</code>) to <code>list[str]</code> — <code>tags__contains</code> would be ambiguous (substring of
+an element? membership?). Array fields get array operators. Element-level
+substring matching is an explicit, named, <code>full</code>-tier operator
+(<code>tags__has_substr</code>) so the intent is unmistakable.</p>
+</blockquote>
+<h3 id="nested-pydantic-models-embedded-documents">Nested Pydantic models (embedded documents)<a class="headerlink" href="#nested-pydantic-models-embedded-documents" title="Permanent link">&para;</a></h3>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="k">class</span><span class="w"> </span><span class="nc">Address</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>    <span class="n">city</span><span class="p">:</span> <span class="nb">str</span>
+</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>    <span class="nb">zip</span><span class="p">:</span> <span class="nb">str</span>
+</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>
+</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="k">class</span><span class="w"> </span><span class="nc">User</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+</span><span id="__span-1-6"><a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>    <span class="n">address</span><span class="p">:</span> <span class="n">Address</span>
+</span></code></pre></div>
+<p>Nested fields are reachable by <strong>dotted path</strong>, which maps cleanly to Mongo's dot
+notation:</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>?address__city__contains=ams      # field path = address.city, op = contains
+</span></code></pre></div>
+<h3 id="parameter-matching-precise-there-is-no-request-time-parsing">Parameter matching (precise — there is no request-time parsing)<a class="headerlink" href="#parameter-matching-precise-there-is-no-request-time-parsing" title="Permanent link">&para;</a></h3>
+<p>Because the entire parameter surface is generated from the model at
+registration time, the library <strong>never splits incoming parameter names</strong>. Each
+generated parameter carries its own <code>(field_path, operator)</code> pair; an incoming
+name is matched <em>exactly</em> against the generated set. <code>address__city__contains</code>
+works not because a parser split it correctly, but because registration emitted
+a parameter with that exact name bound to <code>(("address", "city"), contains)</code>.</p>
+<p>This makes otherwise-nasty cases non-issues by construction:</p>
+<ul>
+<li>Multi-token operators (<code>len__gte</code>, <code>elem</code>) — the full spelling is just part
+  of the generated name.</li>
+<li>A field literally named with <code>__</code> in it, or a nested field that shares a name
+  with an operator (<code>address.in</code>) — the generated name is whatever it is;
+  collisions between two generated names are detected at registration and
+  raised as a config error naming both sources.</li>
+<li>Unknown incoming parameters are never mis-parsed — they simply don't match,
+  and are handled per the <code>ignore</code>/<code>strict</code> setting (doc 01).</li>
+</ul>
+<p>Generation notes:</p>
+<ul>
+<li>Bare <code>address__city</code> (no operator suffix) is emitted as the implicit-<code>eq</code>
+  parameter for <code>address.city</code>.</li>
+<li><strong>Recursion depth is bounded</strong> (default 2 levels) and configurable, to keep
+  the generated parameter surface finite and the docs readable.</li>
+<li>Cycles (self-referential models) are detected and truncated at the depth limit.</li>
+</ul>
+<h3 id="listnestedmodel-arrays-of-embedded-documents"><code>list[NestedModel]</code> (arrays of embedded documents)<a class="headerlink" href="#listnestedmodel-arrays-of-embedded-documents" title="Permanent link">&para;</a></h3>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="k">class</span><span class="w"> </span><span class="nc">User</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>    <span class="n">orders</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">Order</span><span class="p">]</span>
+</span></code></pre></div>
+<p>These need <strong>element-match</strong> semantics ("a user with an order over $100 that is
+also refunded"). Mongo expresses this with <code>$elemMatch</code>. We expose it explicitly:</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>?orders__elem__amount__gte=100&amp;orders__elem__status=refunded
+</span></code></pre></div>
+<p>The <code>elem</code> token groups conditions that must hold for the <em>same</em> array element,
+compiling to a single <code>$elemMatch</code>. Without <code>elem</code>, conditions on different
+parameters are independent (Mongo's default array-matching semantics) — we
+document this difference loudly because it surprises people. v1 may ship
+<code>elem</code> as <code>full</code>-tier given the subtlety.</p>
+<h3 id="dictstr-t-free-form-maps"><code>dict[str, T]</code> / free-form maps<a class="headerlink" href="#dictstr-t-free-form-maps" title="Permanent link">&para;</a></h3>
+<p>Free-form maps clash with a core promise: <strong>every parameter is pre-generated,
+typed, and documented in OpenAPI</strong> — which is impossible when the key set is
+unknown. So support is deliberately narrow:</p>
+<ul>
+<li><code>?metadata__has_key=region</code> — key presence. This is generatable (one
+  parameter, value typed <code>str</code>) and always available when the field is enabled.</li>
+<li>Value-at-key filtering is available <strong>only for keys enumerated in config</strong>:</li>
+</ul>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="n">metadata</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">],</span> <span class="n">Filterable</span><span class="p">(</span><span class="n">keys</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;region&quot;</span><span class="p">,</span> <span class="s2">&quot;tier&quot;</span><span class="p">])]</span>
+</span></code></pre></div>
+<p>generates <code>metadata__region</code>, <code>metadata__tier</code> (typed as <code>T</code>), and nothing
+  else. No enumeration → no value filtering; we do not accept arbitrary
+  <code>metadata__&lt;anything&gt;</code> at request time, because those params would be
+  undocumented and untyped.</p>
+<p>Default: <strong>not filterable</strong> unless explicitly enabled.</p>
+<h3 id="uniona-b-non-optional-unions"><code>Union[A, B]</code> (non-optional unions)<a class="headerlink" href="#uniona-b-non-optional-unions" title="Permanent link">&para;</a></h3>
+<p>Discouraged for filtering — the operator set is ambiguous. Default: not
+filterable; the library logs a one-time warning naming the field and how to make
+it explicit (annotate it, or pick a concrete type via <code>FilterSet</code>).</p>
+<hr />
+<h2 id="field-db-name-mapping-and-aliases">Field → DB-name mapping and aliases<a class="headerlink" href="#field-db-name-mapping-and-aliases" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>Pydantic aliases</strong> are respected: an alias (e.g. <code>alias="userName"</code>)
+  defaults <strong>both</strong> names at once — the query parameter is named after the
+  alias and the compiled query targets the alias too. <code>Filterable(param=...)</code>
+  and <code>Filterable(source=...)</code> each override one side independently, so the
+  resolution order is: public name = <code>param</code> → alias → field name; source
+  name = <code>source</code> → alias → field name.</li>
+<li><strong>Explicit source override</strong> for when the Mongo field differs from the model:</li>
+</ul>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="n">age</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">Filterable</span><span class="p">(</span><span class="n">source</span><span class="o">=</span><span class="s2">&quot;ageYears&quot;</span><span class="p">)]</span>
+</span></code></pre></div>
+<p><code>?age__gte=21</code> → <code>{"ageYears": {"$gte": 21}}</code>.</p>
+<ul>
+<li><strong>Custom parameter name</strong> (decouple URL from field):</li>
+</ul>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="n">age</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">Filterable</span><span class="p">(</span><span class="n">param</span><span class="o">=</span><span class="s2">&quot;minimum_age&quot;</span><span class="p">,</span> <span class="n">ops</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;gte&quot;</span><span class="p">])]</span>
+</span></code></pre></div>
+<hr />
+<h2 id="per-field-configurability-the-core-question-you-asked">Per-field configurability — the core question you asked<a class="headerlink" href="#per-field-configurability-the-core-question-you-asked" title="Permanent link">&para;</a></h2>
+<p><strong>Yes — it must be configurable which operators are exposed per field</strong>, and the
+design provides four layers, from coarse to fine, each overriding the previous:</p>
+<ol>
+<li>
+<p><strong>Global default profile.</strong> <code>FilterConfig(default_profile="safe")</code> — applies to
+   every field by type. This is the zero-config behavior.</p>
+</li>
+<li>
+<p><strong>Per-type override.</strong> "All strings in this app expose <code>icontains</code> but never
+   <code>regex</code>."</p>
+</li>
+</ol>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="n">FilterConfig</span><span class="p">(</span><span class="n">type_profiles</span><span class="o">=</span><span class="p">{</span><span class="nb">str</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;eq&quot;</span><span class="p">,</span> <span class="s2">&quot;contains&quot;</span><span class="p">,</span> <span class="s2">&quot;icontains&quot;</span><span class="p">]})</span>
+</span></code></pre></div>
+<ol>
+<li><strong>Per-field inline (<code>Annotated</code>).</strong> Wins over type-level.</li>
+</ol>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-9-1"><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="n">email</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Filterable</span><span class="p">(</span><span class="n">ops</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;eq&quot;</span><span class="p">])]</span>           <span class="c1"># exact-match only</span>
+</span><span id="__span-9-2"><a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a><span class="n">bio</span><span class="p">:</span>   <span class="n">Annotated</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Filterable</span><span class="p">(</span><span class="n">ops</span><span class="o">=</span><span class="n">ops</span><span class="o">.</span><span class="n">NONE</span><span class="p">)]</span>         <span class="c1"># explicitly unfilterable</span>
+</span><span id="__span-9-3"><a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a><span class="n">score</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">Filterable</span><span class="p">(</span><span class="n">ops</span><span class="o">=</span><span class="n">ops</span><span class="o">.</span><span class="n">ALL</span><span class="p">)]</span>          <span class="c1"># everything int supports</span>
+</span></code></pre></div>
+<ol>
+<li><strong>Per-field on the route.</strong> Wins over everything, including the field's own
+   <code>Filterable(ops=...)</code> — the route has the final say over its own surface.
+   The shipped spelling is the route-level mapping, keyed by public parameter
+   name:</li>
+</ol>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-10-1"><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="n">FilterConfig</span><span class="p">(</span><span class="n">operators</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;startswith&quot;</span><span class="p">],</span> <span class="s2">&quot;age&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;gte&quot;</span><span class="p">,</span> <span class="s2">&quot;lte&quot;</span><span class="p">]})</span>
+</span></code></pre></div>
+<p>A <code>FilterSet</code>'s <code>fields</code> mapping (Stage 3) occupies this same layer, and is
+   also where custom/computed filters live:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-11-1"><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="k">class</span><span class="w"> </span><span class="nc">UserFilter</span><span class="p">(</span><span class="n">FilterSet</span><span class="p">):</span>
+</span><span id="__span-11-2"><a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>    <span class="k">class</span><span class="w"> </span><span class="nc">Meta</span><span class="p">:</span>
+</span><span id="__span-11-3"><a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a>        <span class="n">model</span> <span class="o">=</span> <span class="n">User</span>
+</span><span id="__span-11-4"><a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a>        <span class="n">fields</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;contains&quot;</span><span class="p">],</span> <span class="s2">&quot;age&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;gte&quot;</span><span class="p">,</span> <span class="s2">&quot;lte&quot;</span><span class="p">]}</span>
+</span><span id="__span-11-5"><a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a>    <span class="c1"># custom filter not derivable from a single field:</span>
+</span><span id="__span-11-6"><a id="__codelineno-11-6" name="__codelineno-11-6" href="#__codelineno-11-6"></a>    <span class="n">active_since</span> <span class="o">=</span> <span class="n">DateFilter</span><span class="p">(</span><span class="n">field</span><span class="o">=</span><span class="s2">&quot;last_login&quot;</span><span class="p">,</span> <span class="n">op</span><span class="o">=</span><span class="s2">&quot;gte&quot;</span><span class="p">)</span>
+</span></code></pre></div>
+<p>Two rules pin down how the ladder interacts with the safety gates (settled by
+the implementation, now normative):</p>
+<ul>
+<li><strong><code>ops.NONE</code> and <code>sortable=False</code> are absolute.</strong> They sit outside the
+  ladder: a config that tries to override them — naming an <code>ops.NONE</code> field in
+  <code>FilterConfig.operators</code>, or a <code>sortable=False</code> field in
+  <code>FilterConfig.sortable</code> — raises <code>ConfigurationError</code> at registration.
+  Route-level config can never quietly resurrect a field the model opted out;
+  a model-level opt-out is a security posture, not a default.</li>
+<li><strong>Explicit operator lists bypass the <code>allow_regex</code> gate.</strong> Listing <code>"regex"</code>
+  in <code>FilterConfig.operators</code>, in <code>Filterable(ops=[...])</code>, or in a
+  <code>type_profiles</code> entry is the eyes-open opt-in and needs no extra flag. The
+  tier profiles remain gated: <code>ops.ALL</code> and the <code>safe</code>/<code>full</code> default profile
+  emit <code>regex</code> only with <code>FilterConfig(allow_regex=True)</code>.</li>
+</ul>
+<h3 id="allow-list-vs-deny-list-semantics">Allow-list vs deny-list semantics<a class="headerlink" href="#allow-list-vs-deny-list-semantics" title="Permanent link">&para;</a></h3>
+<ul>
+<li>In <strong>Option C (zero-config)</strong> the model is an implicit <em>allow-list by type</em>:
+  filterable types in, sensitive types (<code>bytes</code>, <code>dict</code>, bare <code>Union</code>) out by
+  default, plus a global <code>exclude=[...]</code> for named fields.</li>
+<li>In <strong><code>FilterSet</code></strong> the <code>fields</code> mapping is a strict allow-list: <strong>if it's not
+  listed, it's not filterable.</strong> This is the safe default for public APIs — you
+  opt fields <em>in</em>, never accidentally leak a new field by adding it to the model.</li>
+</ul>
+<p>This allow-list-by-default-in-FilterSet property is a deliberate security
+posture, not an accident.</p>
+<hr />
+<h2 id="operator-value-parsing">Operator value parsing<a class="headerlink" href="#operator-value-parsing" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>Single-value ops</strong> (<code>eq</code>, <code>gte</code>, <code>contains</code>): the value is coerced to the
+  field's type by Pydantic (so <code>age__gte=21</code> yields an <code>int</code>, and <code>age__gte=xx</code>
+  yields a clean 422).</li>
+<li><strong>List-value ops</strong> (<code>in</code>, <code>nin</code>, <code>has_any</code>, <code>has_all</code>): accept <strong>both</strong></li>
+<li>repeated keys: <code>?status__in=a&amp;status__in=b</code>, and</li>
+<li>comma-joined: <code>?status__in=a,b</code></li>
+</ul>
+<p>Each element is coerced to the field type. A <code>max_list_length</code> guard applies
+  (default 100) to prevent giant <code>$in</code> clauses.
+- <strong>Range ops</strong> (<code>between</code>): two values, <code>?age__between=21,65</code> → <code>{$gte:21,$lte:65}</code>.
+  Sugar over <code>gte</code>+<code>lte</code>; we keep both spellings, <code>between</code> is just nicer to read.
+- <strong>Bool-valued ops</strong> (<code>isnull</code>, <code>empty</code>, <code>exists</code>): parse <code>true/false/1/0</code>.</p>
+<hr />
+<h2 id="safety-performance-defaults-that-protect-users">Safety &amp; performance (defaults that protect users)<a class="headerlink" href="#safety-performance-defaults-that-protect-users" title="Permanent link">&para;</a></h2>
+<p>Filtering APIs are an unbounded attack/footgun surface. Defaults are conservative:</p>
+<ul>
+<li><strong><code>regex</code> off by default</strong> (ReDoS + collection-scan risk). Enable per-field or
+  globally with eyes open; when enabled we anchor/length-cap patterns and document
+  the risk.</li>
+<li><strong><code>contains</code>/<code>icontains</code> values are <code>re.escape()</code>d</strong> — always, not as an
+  option — so user input is a literal substring, never a pattern. They still
+  compile to unanchored regex in Mongo → collection scans on unindexed fields.
+  We expose this honestly in docs and offer the <code>text_search</code> operator, which
+  uses a real Mongo text index where one exists.</li>
+<li><strong><code>max_list_length</code></strong> caps <code>$in</code>/<code>$all</code> blowups.</li>
+<li><strong><code>max_filters</code></strong> caps the number of simultaneous filters per request.</li>
+<li><strong><code>max_limit</code> / <code>default_limit</code></strong> on pagination; an unbounded <code>limit</code> is never
+  allowed.</li>
+<li><strong>Sortable-field allow-list</strong> (default = filterable set) prevents sorting on
+  unindexed fields by surprise.</li>
+<li><strong>Field allow-list in FilterSet</strong> prevents accidental field exposure.</li>
+</ul>
+<p>All guards are config knobs with safe defaults — the library is safe out of the
+box and tunable when you know your indexes.</p>
+<p>Continue to <strong><a href="../03-architecture/">03 — Architecture</a></strong>.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      Copyright &copy; 2026 Eytan Ohana
+
+    </div>
+  
+  
+    Made with
+    <a href="https://zensical.org/" target="_blank" rel="noopener">
+      Zensical
+    </a>
+  
+</div>
+      
+        
+<div class="md-social">
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://github.com/eytanohana/fast-pager" target="_blank" rel="noopener" title="github.com" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2026 Fonticons, Inc.--><path fill="currentColor" d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate":null,"base":"../..","features":[],"search":"../../assets/javascripts/workers/search.b6b7e04f.min.js","tags":null,"translations":{"clipboard.copied":"Copied to clipboard","clipboard.copy":"Copy to clipboard","search.result.more.one":"1 more on this page","search.result.more.other":"# more on this page","search.result.none":"No matching documents","search.result.one":"1 matching document","search.result.other":"# matching documents","search.result.placeholder":"Type to start searching","search.result.term.missing":"Missing","select.version":"Select version"},"version":{"alias":true,"default":"latest","provider":"mike"}}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.d7f30b55.min.js"></script>
+      
+    
+  </body>
+</html>
