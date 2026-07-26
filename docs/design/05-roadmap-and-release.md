@@ -3,6 +3,13 @@
 A phased path from empty repo to a clean, documented, pleasurable 1.0 on PyPI.
 Each phase ends with something shippable and is gated by concrete exit criteria.
 
+> **Versioning:** the authoritative phase→version mapping lives in the
+> [development plan's version map](https://github.com/eytanohana/fast-pager/blob/main/DEVELOPMENT_PLAN.md#version-map-summary)
+> and evolves with execution (large phases ship as several additive `0.x.y`
+> checkpoint releases; minor bumps mark phase boundaries and are where
+> pre-1.0 breaking changes may land). This document deliberately no longer
+> pins version numbers to phases.
+
 ## Project foundations (do this once, in Phase 0)
 
 - **Tooling:** `uv` for env/deps, `hatchling` build backend, `ruff`
@@ -28,7 +35,7 @@ dependency**.
 
 ---
 
-## Phase 1 — Core + Mongo, scalars only (`0.1`)
+## Phase 1 — Core + Mongo, scalars only
 
 **Goal:** the headline demo works end to end for scalar fields.
 
@@ -48,7 +55,7 @@ clean.
 
 ---
 
-## Phase 2 — Configurability + compound types (`0.2`–`0.3`)
+## Phase 2 — Configurability + compound types
 
 **Goal:** real-world models, real control.
 
@@ -64,7 +71,7 @@ example app (users + addresses + tags + orders) filters correctly.
 
 ---
 
-## Phase 3 — Second backend + ergonomics (`0.4`–`0.6`)
+## Phase 3 — Second backend + ergonomics
 
 **Goal:** prove the multi-backend thesis; polish DX.
 
