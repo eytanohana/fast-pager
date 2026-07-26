@@ -1596,8 +1596,23 @@ also refunded"). Mongo expresses this with <code>$elemMatch</code>. We expose it
 <p>The <code>elem</code> token groups conditions that must hold for the <em>same</em> array element,
 compiling to a single <code>$elemMatch</code>. Without <code>elem</code>, conditions on different
 parameters are independent (Mongo's default array-matching semantics) — we
-document this difference loudly because it surprises people. v1 may ship
-<code>elem</code> as <code>full</code>-tier given the subtlety.</p>
+document this difference loudly because it surprises people.</p>
+<p><code>elem</code> parameters are <strong><code>full</code>-tier</strong> (shipped that way given the subtlety):
+under the default <code>safe</code> profile they generate nothing, and there are exactly
+three opt-in paths — <code>FilterConfig(default_profile="full")</code>, a
+<code>Filterable(ops=...)</code> on the element field, or a <code>FilterConfig.operators</code>
+entry naming the elem path. <code>text_search</code> never applies inside elements.
+Shape operators (<code>len__*</code>, <code>empty</code>) remain available on the array field
+itself and merge with <code>$elemMatch</code> on the same field. Elem paths are never
+sortable. The <code>elem</code> hop counts as <strong>one</strong> <code>max_depth</code> boundary, like an
+embedding.</p>
+<p><strong>Adapter contract:</strong> in the AST, element-relative fields carry a literal
+<code>$elem</code> source segment (<code>orders.$elem.amount</code> — <code>$</code>-prefixed, so it cannot
+collide with a real Mongo field name; exported as
+<code>fast_pager.ast.ELEM_SOURCE_MARKER</code>). Backends group all conditions sharing
+the prefix before <code>.$elem.</code> into one element-match construct with keys
+relative to the element. The conformance suite (doc 04) exercises this
+grouping rule.</p>
 <h3 id="dictstr-t-free-form-maps"><code>dict[str, T]</code> / free-form maps<a class="headerlink" href="#dictstr-t-free-form-maps" title="Permanent link">&para;</a></h3>
 <p>Free-form maps clash with a core promise: <strong>every parameter is pre-generated,
 typed, and documented in OpenAPI</strong> — which is impossible when the key set is
@@ -1609,10 +1624,16 @@ unknown. So support is deliberately narrow:</p>
 </ul>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="n">metadata</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">],</span> <span class="n">Filterable</span><span class="p">(</span><span class="n">keys</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;region&quot;</span><span class="p">,</span> <span class="s2">&quot;tier&quot;</span><span class="p">])]</span>
 </span></code></pre></div>
-<p>generates <code>metadata__region</code>, <code>metadata__tier</code> (typed as <code>T</code>), and nothing
-  else. No enumeration → no value filtering; we do not accept arbitrary
-  <code>metadata__&lt;anything&gt;</code> at request time, because those params would be
-  undocumented and untyped.</p>
+<p>generates <code>metadata__region</code>, <code>metadata__tier</code> (typed as <code>T</code>, <strong>implicit
+  <code>eq</code> only</strong> in this release), and nothing else. No enumeration → no value
+  filtering; we do not accept arbitrary <code>metadata__&lt;anything&gt;</code> at request
+  time, because those params would be undocumented and untyped. Richer
+  per-key operator curation is deferred to <code>FilterSet</code>.</p>
+<p>Because a map key becomes part of a Mongo field path, keys are
+<strong>sanitized</strong>: empty keys and keys containing <code>.</code>, <code>$</code>, or NUL are rejected —
+at <code>Filterable(keys=...)</code> construction time (<code>ConfigurationError</code>), at
+request time for <code>has_key</code> values (standard 422), and again in the compiler
+(<code>CompilationError</code>, defense in depth for direct AST users).</p>
 <p>Default: <strong>not filterable</strong> unless explicitly enabled.</p>
 <h3 id="uniona-b-non-optional-unions"><code>Union[A, B]</code> (non-optional unions)<a class="headerlink" href="#uniona-b-non-optional-unions" title="Permanent link">&para;</a></h3>
 <p>Discouraged for filtering — the operator set is ambiguous. Default: not

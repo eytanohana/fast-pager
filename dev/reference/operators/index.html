@@ -593,6 +593,28 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#arrays-of-nested-models-listnestedmodel" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Arrays of nested models — <code>list[NestedModel]</code>
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#maps-dictstr-t" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Maps — <code>dict[str, T]</code>
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#operator-semantics" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -1067,6 +1089,28 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#arrays-of-nested-models-listnestedmodel" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Arrays of nested models — <code>list[NestedModel]</code>
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#maps-dictstr-t" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Maps — <code>dict[str, T]</code>
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#operator-semantics" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -1108,14 +1152,15 @@
 
 <h1 id="operator-reference">Operator Reference<a class="headerlink" href="#operator-reference" title="Permanent link">&para;</a></h1>
 <div class="admonition note">
-<p class="admonition-title">Scalars, arrays of scalars, and nested models (for now)</p>
+<p class="admonition-title">The full compound-type surface</p>
 <p>The current release supports the <strong>scalar types</strong> below, <strong>arrays of
-scalars</strong> (<code>list[T]</code> / <code>set[T]</code>), and <strong>nested Pydantic models</strong> via
-dotted paths. The remaining compound types are designed (see
-<a href="../../design/02-type-and-operator-system/">design doc 02</a>) and land in
-phased releases: arrays of nested models and <code>dict[str, T]</code> keys in
-<strong><code>v0.1.3</code></strong>, and <code>FilterSet</code> in <strong><code>v0.2.0</code></strong>. This page grows a table
-per type as each ships.</p>
+scalars</strong> (<code>list[T]</code> / <code>set[T]</code>), <strong>nested Pydantic models</strong> via dotted
+paths, <strong>arrays of nested models</strong> (<code>list[NestedModel]</code> via <code>elem</code> →
+<code>$elemMatch</code>), and <strong><code>dict[str, T]</code> maps</strong> (explicitly enabled, key
+presence + enumerated keys). That completes the type tables of
+<a href="../../design/02-type-and-operator-system/">design doc 02</a>; the
+<code>FilterSet</code> class (allow-list filter surfaces per model) lands in
+<strong><code>v0.2.0</code></strong>.</p>
 </div>
 <p>Every operator set below is the <em>default</em> for its type — the <strong><code>safe</code></strong>
 profile. Operators listed under <strong><code>full</code></strong> are additional operators
@@ -1366,8 +1411,131 @@ Mongo dot notation:</p>
   because matching is exact, a literal field named <code>address__city</code> and a
   nested <code>address.city</code> path that generate the same parameter name raise a
   <code>ConfigurationError</code> at registration naming both sources.</li>
-<li><code>list[NestedModel]</code> element matching (<code>elem</code> → <code>$elemMatch</code>) ships in
-  <code>v0.1.3</code>.</li>
+</ul>
+<h2 id="arrays-of-nested-models-listnestedmodel">Arrays of nested models — <code>list[NestedModel]</code><a class="headerlink" href="#arrays-of-nested-models-listnestedmodel" title="Permanent link">&para;</a></h2>
+<p>A field whose type is a <em>list of</em> Pydantic models gets element matching via
+the <strong><code>elem</code></strong> path segment:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="k">class</span><span class="w"> </span><span class="nc">Order</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>    <span class="n">amount</span><span class="p">:</span> <span class="nb">float</span>
+</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>    <span class="n">status</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;paid&quot;</span><span class="p">,</span> <span class="s2">&quot;refunded&quot;</span><span class="p">]</span>
+</span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>
+</span><span id="__span-2-5"><a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="k">class</span><span class="w"> </span><span class="nc">User</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+</span><span id="__span-2-6"><a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>    <span class="n">name</span><span class="p">:</span> <span class="nb">str</span>
+</span><span id="__span-2-7"><a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>    <span class="n">orders</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">Order</span><span class="p">]</span>
+</span></code></pre></div>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>?orders__elem__amount__gte=100&amp;orders__elem__status=refunded
+</span></code></pre></div>
+<p>compiles to a <strong>single <code>$elemMatch</code></strong>:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="p">{</span><span class="s2">&quot;orders&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;$elemMatch&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;amount&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;$gte&quot;</span><span class="p">:</span> <span class="mf">100.0</span><span class="p">},</span> <span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="s2">&quot;refunded&quot;</span><span class="p">}}}</span>
+</span></code></pre></div>
+<div class="admonition warning">
+<p class="admonition-title">Same-element vs. independent conditions — the <code>$elemMatch</code> surprise</p>
+<p>This is the whole point of the <code>elem</code> token, and it is where Mongo
+surprises people most. <strong>All conditions on the same <code>orders__elem__...</code>
+prefix in one request must hold for the <em>same</em> array element</strong> — the
+query above finds users with <em>one order</em> that is both ≥ 100 <strong>and</strong>
+refunded.</p>
+<p>Mongo's <em>default</em> array-matching semantics are the opposite:
+<code>{"orders.amount": {"$gte": 100}, "orders.status": "refunded"}</code> matches
+a user whose ≥-100 order and refunded order are <strong>different elements</strong>.
+<code>fast-pager</code> deliberately does <strong>not</strong> generate those independent
+dotted-path parameters for arrays of models — if a request names an
+<code>elem</code> path, you get same-element semantics, always. (Independent
+conditions across <em>different</em> array fields remain independent: each
+array field gets its own <code>$elemMatch</code>.)</p>
+</div>
+<p>The rules, precisely:</p>
+<ul>
+<li><strong><code>elem</code> parameters are <code>full</code>-tier as a whole</strong> — precisely because of
+  the subtlety above (design doc 02). Under the default <code>safe</code> profile no
+  <code>elem</code> parameters are generated; opt in with
+  <code>FilterConfig(default_profile="full")</code>, with <code>Filterable(ops=[...])</code> on
+  the element model's field, or with a <code>FilterConfig(operators=
+  {"orders__elem__amount": [...]})</code> entry naming the <code>elem</code> path.</li>
+<li><strong>Fields inside the element get their normal operator surface</strong> (scalar
+  operators, the array family for a <code>list[T]</code> inside the element,
+  <code>Filterable</code> renames — <code>source=</code> composes <em>relatively</em>: inside
+  <code>$elemMatch</code>, keys are relative to the element). One exception:
+  <code>text_search</code> is collection-level and never applies inside elements —
+  explicitly configuring it on an <code>elem</code> path is a <code>ConfigurationError</code>.</li>
+<li><strong>The array field itself gets the shape operators</strong> — <code>len__eq</code> / <code>empty</code>
+  (<code>safe</code>) and the <code>len</code> comparisons (<code>full</code>), compiled exactly as for
+  <a href="#arrays-of-scalars-listt-sett">arrays of scalars</a> — plus
+  <code>isnull</code>/<code>exists</code> when <code>Optional</code>. It does <strong>not</strong> get
+  <code>has</code>/<code>has_any</code>/<code>has_all</code> (element equality against whole documents is
+  not expressible through typed query parameters), and there is no bare
+  <code>?orders=</code> parameter. A shape condition and an <code>elem</code> group on the same
+  field merge: <code>{"orders": {"$size": 2, "$elemMatch": {...}}}</code>.</li>
+<li><strong>The <code>elem</code> hop counts as one <code>max_depth</code> boundary</strong>, exactly like an
+  embedding: with the default <code>max_depth=2</code>, <code>orders__elem__amount</code> (1) and
+  <code>orders__elem__items__elem__qty</code> (2, a nested array inside the element)
+  are generated. Cycles truncate at the bound, as for embeddings.</li>
+<li><strong><code>elem</code> paths are never sortable.</strong> "Sort users by the amount of an
+  order" has no per-document meaning; naming an <code>elem</code> path in
+  <code>FilterConfig(sortable=[...])</code> is a <code>ConfigurationError</code>, and
+  <code>Filterable(sortable=True)</code> on an element model's field is ignored for
+  its <code>elem</code> uses.</li>
+<li><strong>Subtree opt-out works as for embeddings</strong>: <code>Filterable(ops=ops.NONE)</code>
+  on the <code>list[NestedModel]</code> field (or <code>FilterConfig(exclude=["orders"])</code>)
+  removes the field and every <code>elem</code> descendant;
+  <code>exclude=["orders__elem__amount"]</code> removes a single element field.</li>
+</ul>
+<h2 id="maps-dictstr-t">Maps — <code>dict[str, T]</code><a class="headerlink" href="#maps-dictstr-t" title="Permanent link">&para;</a></h2>
+<p>Free-form maps clash with a core promise — every parameter is
+pre-generated, typed, and documented in OpenAPI — so support is
+deliberately narrow, and <strong>maps are not filterable by default</strong>: a plain
+<code>dict[str, T]</code> field generates nothing. A <code>Filterable</code> annotation enables
+it:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="k">class</span><span class="w"> </span><span class="nc">User</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>    <span class="n">metadata</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">],</span> <span class="n">Filterable</span><span class="p">(</span><span class="n">keys</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;region&quot;</span><span class="p">,</span> <span class="s2">&quot;tier&quot;</span><span class="p">])]</span>
+</span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>    <span class="n">counters</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">int</span><span class="p">],</span> <span class="n">Filterable</span><span class="p">()]</span>
+</span><span id="__span-5-4"><a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>    <span class="n">attrs</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span>          <span class="c1"># no annotation → not filterable</span>
+</span></code></pre></div>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Enabled by</th>
+<th>Value</th>
+<th>Mongo compilation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>metadata__has_key=region</code></td>
+<td>any <code>Filterable(...)</code> on the field</td>
+<td>the key name (<code>str</code>, whatever <code>T</code> is)</td>
+<td><code>{"metadata.region": {"$exists": true}}</code></td>
+</tr>
+<tr>
+<td><code>metadata__region=emea</code></td>
+<td>only keys enumerated in <code>Filterable(keys=[...])</code></td>
+<td>typed as <code>T</code>, implicit <code>eq</code> only</td>
+<td><code>{"metadata.region": "emea"}</code></td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li><strong><code>has_key</code> values are sanitized.</strong> The key is user input inserted into a
+  backend field path, so keys that are empty or contain <code>.</code>, <code>$</code>, or null
+  bytes are rejected with a standard 422 (and the Mongo compiler re-checks
+  and raises for direct AST users — defense in depth). The same rule
+  applies, at registration time, to the keys listed in
+  <code>Filterable(keys=[...])</code>.</li>
+<li><strong>Value-at-key parameters exist only for enumerated keys</strong> — there is no
+  request-time <code>metadata__&lt;anything&gt;</code>; un-enumerated spellings are unknown
+  parameters (a 422 in strict mode). Each enumerated key gets a typed,
+  <code>eq</code>-only parameter (<code>metadata__region</code> / <code>metadata__region__eq</code>);
+  configuring any other operator on it is a <code>ConfigurationError</code>. Richer
+  per-key operator sets may come with <code>FilterSet</code>.</li>
+<li><strong>Type constraints are enforced at registration</strong>: <code>Filterable</code> on a bare
+  <code>dict</code>, a non-<code>str</code> key type, or an unsupported value type raises
+  <code>ConfigurationError</code>, as does <code>Filterable(keys=[...])</code> on a non-map field.</li>
+<li><strong>Maps are not sortable by default</strong> (and expose no bare <code>?metadata=</code>
+  parameter). An enumerated key path may be opted into sorting via
+  <code>FilterConfig(sortable=["metadata__region"])</code> — it compiles to the dotted
+  <code>metadata.region</code>. <code>Optional[dict[str, T]]</code> adds <code>isnull</code> (<code>safe</code>) and
+  <code>exists</code> (<code>full</code>).</li>
 </ul>
 <h2 id="operator-semantics">Operator semantics<a class="headerlink" href="#operator-semantics" title="Permanent link">&para;</a></h2>
 <table>
@@ -1451,6 +1619,12 @@ Mongo dot notation:</p>
 <td>bool</td>
 <td><code>email__exists=false</code></td>
 <td><code>{"email": {"$exists": false}}</code></td>
+</tr>
+<tr>
+<td><code>has_key</code></td>
+<td>single (the key name)</td>
+<td><code>metadata__has_key=region</code></td>
+<td><code>{"metadata.region": {"$exists": true}}</code> — key sanitized, see <a href="#maps-dictstr-t">Maps</a></td>
 </tr>
 </tbody>
 </table>

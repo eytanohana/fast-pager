@@ -905,6 +905,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#013-stage-3-checkpoint-arrays-of-nested-models-maps" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        <code>0.1.3</code> — Stage 3 checkpoint: arrays of nested models + maps
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#012-stage-3-checkpoint-nested-models" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -1030,6 +1041,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#013-stage-3-checkpoint-arrays-of-nested-models-maps" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        <code>0.1.3</code> — Stage 3 checkpoint: arrays of nested models + maps
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#012-stage-3-checkpoint-nested-models" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -1130,6 +1152,34 @@ unstable API, and breaking changes bump the minor version and are called out
 below. See the <a href="../design/05-roadmap-and-release/">Roadmap</a> for what's coming
 next, and the <a href="https://github.com/eytanohana/fast-pager/blob/main/DEVELOPMENT_PLAN.md">development plan</a>
 for the execution detail behind each stage.</p>
+<h2 id="013-stage-3-checkpoint-arrays-of-nested-models-maps"><code>0.1.3</code> — Stage 3 checkpoint: arrays of nested models + maps<a class="headerlink" href="#013-stage-3-checkpoint-arrays-of-nested-models-maps" title="Permanent link">&para;</a></h2>
+<p>The compound-type tables of design doc 02 are now complete. <strong>Arrays of
+nested models</strong> (<code>list[NestedModel]</code>) get element matching via the <code>elem</code>
+path segment: every condition sharing an <code>orders__elem__</code> prefix in one
+request compiles into a <strong>single <code>$elemMatch</code></strong> — same-element semantics
+(<code>?orders__elem__amount__gte=100&amp;orders__elem__status=refunded</code> finds one
+order that is both), the loudly-documented opposite of Mongo's independent
+dotted-path default. <code>elem</code> parameters are <strong>full-tier</strong> given that
+subtlety (generated under <code>default_profile="full"</code> or an explicit
+per-field/per-route operator opt-in); the array field itself keeps the
+safe-tier shape operators (<code>len__*</code>/<code>empty</code>, reusing the 3a compilation)
+plus <code>isnull</code>/<code>exists</code> when <code>Optional</code>; the <code>elem</code> hop counts as one
+<code>max_depth</code> boundary exactly like an embedding; <code>elem</code> paths are never
+sortable; <code>text_search</code> never applies inside elements. <strong>Maps</strong>
+(<code>dict[str, T]</code>) stay unfilterable by default; a <code>Filterable</code> annotation
+enables <code>has_key</code> (key presence, with the key — request input inserted
+into a field path — rejected with a 422 when it contains <code>.</code>, <code>$</code>, or null
+bytes), and <code>Filterable(keys=["region"])</code> additionally generates typed,
+<code>eq</code>-only value-at-key parameters (<code>?metadata__region=emea</code> →
+<code>{"metadata.region": "emea"}</code>). Unsupported map shapes (non-<code>str</code> keys,
+unsupported value types) with a <code>Filterable</code> raise <code>ConfigurationError</code> at
+registration, as does <code>keys=</code> on a non-map field. Strictly additive: no
+behavior changes to anything shipped in <code>0.1.2</code>. See the new
+<a href="../reference/operators/#arrays-of-nested-models-listnestedmodel">arrays-of-nested-models</a>
+and <a href="../reference/operators/#maps-dictstr-t">maps</a> sections of the Operator
+Reference and the matching
+<a href="../tutorial/filtering/#arrays-of-nested-models">tutorial sections</a>.
+100% test coverage, <code>mypy --strict</code> clean.</p>
 <h2 id="012-stage-3-checkpoint-nested-models"><code>0.1.2</code> — Stage 3 checkpoint: nested models<a class="headerlink" href="#012-stage-3-checkpoint-nested-models" title="Permanent link">&para;</a></h2>
 <p>Nested Pydantic models (embedded documents) are now filterable by <strong>dotted
 path</strong>: introspection recurses into a field whose type is another model, so
@@ -1209,11 +1259,10 @@ the repository has CI + fully automated release tooling
 but <strong>no library functionality yet</strong>. Nothing in this documentation site is
 installable against <code>0.0.1</code> — see <a href="../getting-started/">Getting Started</a>.</p>
 <h2 id="coming-next">Coming next<a class="headerlink" href="#coming-next" title="Permanent link">&para;</a></h2>
-<p>The rest of Stage 3, in strictly additive checkpoint releases:
-<code>list[NestedModel]</code> element matching via <code>elem</code> → <code>$elemMatch</code> and <code>dict</code>
-fields with enumerated keys in <strong><code>v0.1.3</code></strong>; and the <code>FilterSet</code> class
-(allow-list <code>fields</code> mapping, multiple filter surfaces per model, custom
-declared filters) capping the stage in <strong><code>v0.2.0</code></strong>. Tracked in
+<p>The <code>FilterSet</code> class caps Stage 3 in <strong><code>v0.2.0</code></strong>: an allow-list <code>fields</code>
+mapping per filter surface, multiple filter surfaces per model, and custom
+declared filters — plus a non-trivial example app (users + addresses +
+tags + orders) exercised in CI. Tracked in
 <a href="../design/05-roadmap-and-release/">design doc 05 — Roadmap &amp; Release Plan</a>.</p>
 
 
