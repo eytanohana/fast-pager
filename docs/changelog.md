@@ -10,6 +10,31 @@ below. See the [Roadmap](design/05-roadmap-and-release.md) for what's coming
 next, and the [development plan](https://github.com/eytanohana/fast-pager/blob/main/DEVELOPMENT_PLAN.md)
 for the execution detail behind each stage.
 
+## `0.1.2` — Stage 3 checkpoint: nested models
+
+Nested Pydantic models (embedded documents) are now filterable by **dotted
+path**: introspection recurses into a field whose type is another model, so
+`?address__city__contains=ams` compiles to `{"address.city": {"$regex":
+"ams"}}` — and everything shipped for flat fields carries over to nested
+leaves unchanged (scalar operators, the array family for a nested
+`list[T]`, `Filterable(...)`, `type_profiles`, bare-`eq` sugar, sorting by
+public name, `FilterConfig` keys in the dotted-param spelling
+`"address__city"`). Recursion is **depth-bounded** by the new
+`FilterConfig(max_depth=...)` knob (default 2 embedded-model levels below
+the root; deeper fields are silently skipped), which keeps the parameter
+surface finite and makes self-referential models safe by construction. The
+embedding field itself exposes no operators — except `isnull`/`exists` on
+an `Optional` embedding — and a whole subtree opts out with
+`Filterable(ops=ops.NONE)` on the embedding field or
+`FilterConfig(exclude=["address"])`. Generated-name collisions (a literal
+`address__city` field vs. a nested `address.city` path) raise a
+`ConfigurationError` at registration naming both sources. `list[NestedModel]`
+and `dict` stay unfilterable until `v0.1.3`. Strictly additive: no behavior
+changes to anything shipped in `0.1.1`. See the new
+[nested-models section in the Operator Reference](reference/operators.md#nested-pydantic-models-embedded-documents)
+and the [nested-models section of the filtering tutorial](tutorial/filtering.md#nested-models).
+100% test coverage, `mypy --strict` clean.
+
 ## `0.1.1` — Stage 3 checkpoint: arrays of scalars
 
 `list[T]` and `set[T]` fields (any supported scalar element type, including
@@ -78,8 +103,7 @@ installable against `0.0.1` — see [Getting Started](getting-started.md).
 
 ## Coming next
 
-The rest of Stage 3, in strictly additive checkpoint releases: nested
-Pydantic models via dotted paths (`address__city__contains`) in **`v0.1.2`**;
+The rest of Stage 3, in strictly additive checkpoint releases:
 `list[NestedModel]` element matching via `elem` → `$elemMatch` and `dict`
 fields with enumerated keys in **`v0.1.3`**; and the `FilterSet` class
 (allow-list `fields` mapping, multiple filter surfaces per model, custom

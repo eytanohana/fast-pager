@@ -135,6 +135,71 @@ Two Mongo traps are pinned down for you (details in the
 neither `empty=true` nor `empty=false` — and array fields are **not
 sortable by default** (opt in per field with `Filterable(sortable=True)`).
 
+## Nested models
+
+Fields whose type is another Pydantic model are filterable by **dotted
+path**: the public parameter joins the segments with `__`, the compiled
+query uses Mongo dot notation.
+
+```python
+class Geo(BaseModel):
+    lat: float
+    lon: float
+
+class Address(BaseModel):
+    city: str
+    tags: list[str]
+    geo: Geo
+
+class User(BaseModel):
+    name: str
+    address: Address
+    billing: Optional[Address] = None
+```
+
+```text
+?address__city__contains=ams        # nested string field
+?address__city=Amsterdam            # bare eq works on nested leaves too
+?address__tags__has=home            # nested arrays get the array family
+?address__geo__lat__gte=52          # two levels deep
+?billing__isnull=true               # Optional embedding: presence check
+?sort=-address__city                # nested leaves sort by public name
+```
+
+A request like `?address__geo__lat__gte=52&address__geo__lat__lt=53`
+compiles to one merged sub-document, exactly like a flat field:
+
+```python
+{"address.geo.lat": {"$gte": 52.0, "$lt": 53.0}}
+```
+
+Everything you know from flat fields carries over: nested scalars get their
+type's operators (and `type_profiles` overrides), nested `list[T]` fields
+get the array family, `Filterable(...)` on a nested field works unchanged,
+and `source=`/`param=`/aliases rename *their own segment* of the dotted
+path. `FilterConfig` keys use the public dotted spelling —
+`operators={"address__city": ["contains"]}`, `exclude=["address__city"]`,
+`sortable=["address__city"]`.
+
+Three things are specific to nesting:
+
+- **Depth bound.** Generation descends `FilterConfig(max_depth=...)`
+  embedded-model levels below the root (default **2**). Deeper fields are
+  silently skipped — this keeps the parameter surface and your OpenAPI docs
+  finite, and it is also what makes self-referential models safe.
+- **The embedding field itself.** `?address=` doesn't exist — you filter
+  the leaves, not the subdocument. The exception: an `Optional` embedding
+  exposes `isnull`/`exists`, because "has no billing address" is a real
+  question. Children of a nullable embedding behave normally (a condition
+  on `billing__city` simply matches nothing when `billing` is null).
+- **Excluding a subtree.** `Filterable(ops=ops.NONE)` on the embedding
+  field removes the whole subtree from the filter surface, as does
+  `FilterConfig(exclude=["billing"])` at the route level.
+
+Full rules — segment naming, collision detection, embedding-field
+`Filterable` semantics — are in the
+[Operator Reference](../reference/operators.md#nested-pydantic-models-embedded-documents).
+
 ## Safety by default
 
 Some operators are gated because they're expensive or dangerous on an

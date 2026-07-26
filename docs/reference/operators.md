@@ -4,14 +4,14 @@ icon: lucide/table
 
 # Operator Reference
 
-!!! note "Scalars and arrays of scalars (for now)"
-    The current release supports the **scalar types** below and **arrays of
-    scalars** (`list[T]` / `set[T]`). The remaining compound types are
-    designed (see
+!!! note "Scalars, arrays of scalars, and nested models (for now)"
+    The current release supports the **scalar types** below, **arrays of
+    scalars** (`list[T]` / `set[T]`), and **nested Pydantic models** via
+    dotted paths. The remaining compound types are designed (see
     [design doc 02](../design/02-type-and-operator-system.md)) and land in
-    phased releases: nested Pydantic models in **`v0.1.2`**, arrays of
-    nested models and `dict[str, T]` keys in **`v0.1.3`**, and `FilterSet`
-    in **`v0.2.0`**. This page grows a table per type as each ships.
+    phased releases: arrays of nested models and `dict[str, T]` keys in
+    **`v0.1.3`**, and `FilterSet` in **`v0.2.0`**. This page grows a table
+    per type as each ships.
 
 Every operator set below is the *default* for its type — the **`safe`**
 profile. Operators listed under **`full`** are additional operators
@@ -103,6 +103,85 @@ Multi-token names like `tags__len__gte` need no special parsing rules: every
 parameter is pre-generated with its exact name at registration, so the full
 spelling is simply matched as-is (see the
 [filtering tutorial](../tutorial/filtering.md#the-field__op-convention)).
+
+## Nested Pydantic models (embedded documents)
+
+A field whose type is another Pydantic model is walked recursively, and every
+supported field inside it becomes filterable by **dotted path** — public
+parameter names join the segments with the separator, compiled queries use
+Mongo dot notation:
+
+```python
+class Geo(BaseModel):
+    lat: float
+    lon: float
+
+class Address(BaseModel):
+    city: str
+    tags: list[str]
+    geo: Geo
+
+class User(BaseModel):
+    name: str
+    address: Address
+    billing: Optional[Address] = None
+```
+
+```text
+?address__city__contains=ams        # {"address.city": {"$regex": "ams"}}
+?address__geo__lat__gte=52          # {"address.geo.lat": {"$gte": 52.0}}
+?address__city=Amsterdam            # bare eq works on nested leaves too
+```
+
+The rules, precisely:
+
+- **Fields inside a nested model get their full normal treatment.** A nested
+  scalar exposes its type's scalar operators (including per-type
+  `type_profiles` overrides), a nested `list[T]` exposes the
+  [array family](#arrays-of-scalars-listt-sett) (`address__tags__has=home`),
+  and `Filterable(ops=... / source=... / param=... / sortable=...)` on a
+  nested field works exactly as at top level.
+- **`source` / `param` / aliases compose per segment.** Each path segment
+  resolves its two names independently
+  (`param` → alias → field name for the URL; `source` → alias → field name
+  for the database), so `Filterable(source="zip")` on `Address.zip_code`
+  yields `?address__zip_code=...` → `{"address.zip": ...}`, and a rename on
+  the *embedding* field renames that segment for the whole subtree.
+- **The embedding field itself has no operators of its own** — no bare
+  `?address=` parameter exists — with one exception: an **`Optional`
+  embedding** exposes `isnull` (`safe`) and `exists` (`full`), so
+  `?billing__isnull=true` finds documents without a billing address. The
+  children of a nullable embedding are generated normally; note that when
+  the parent is `null`, a condition on a child simply matches nothing —
+  combine with `billing__isnull=false` when presence matters.
+- **Depth is bounded** by `FilterConfig(max_depth=...)`, default **2**: a
+  field's path may cross at most `max_depth` embedded-model boundaries.
+  `address__city` (1) and `address__geo__lat` (2) are generated; anything
+  deeper is silently skipped. A nested model sitting exactly at the bound
+  keeps its own `isnull`/`exists` (when nullable) but none of its children.
+  The bound is what keeps the parameter surface finite — and it is also the
+  cycle guard: self-referential or mutually-recursive models simply truncate
+  at the bound.
+- **Subtree opt-out:** `Filterable(ops=ops.NONE)` on the embedding field
+  removes the field *and every descendant* from the filter surface. Other
+  `Filterable` options on an embedding field never touch the children —
+  `ops=[...]` is validated against the embedding's own operator set
+  (`isnull`/`exists` when nullable, nothing otherwise). Route-level,
+  `FilterConfig(exclude=["billing"])` excludes the subtree, and
+  `exclude=["address__city"]` a single nested field.
+- **Config keys use the public dotted-param spelling**:
+  `FilterConfig(operators={"address__city": ["contains"]})`,
+  `sortable=["address__city"]`, `exclude=["address__city"]`.
+- **Nested leaves sort by their public name** — `?sort=-address__city`
+  compiles to the dotted source `address.city`. Scalar leaves are sortable
+  by default (sortable-iff-filterable, as at top level); embedding fields
+  and nested arrays are not.
+- **Name collisions are impossible to mis-parse and loud to misconfigure**:
+  because matching is exact, a literal field named `address__city` and a
+  nested `address.city` path that generate the same parameter name raise a
+  `ConfigurationError` at registration naming both sources.
+- `list[NestedModel]` element matching (`elem` → `$elemMatch`) ships in
+  `v0.1.3`.
 
 ## Operator semantics
 
