@@ -55,6 +55,16 @@ def test_skip_and_limit_from_params():
     assert q.limit == 7 and q.skip == 21
 
 
+def test_array_conditions_flow_through_the_ast():
+    from conftest import Tagged
+
+    plan = build_plan(Tagged, FilterConfig())
+    q = FilterQuery(plan, plan.params_model.model_validate({"tags__has_any": ["a,b"]}))
+    (cond,) = q.applied
+    assert cond.field == "tags" and cond.op == "has_any" and cond.value == ("a", "b")
+    assert q.to_mongo() == {"tags": {"$in": ["a", "b"]}}
+
+
 def test_repr_is_informative():
     q = make_query({"age__gte": 21})
     text = repr(q)

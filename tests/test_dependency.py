@@ -5,7 +5,7 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from pydantic import BaseModel
 
-from conftest import Aliased, Curated, User
+from conftest import Aliased, Curated, Tagged, User
 from fast_pager import ConfigurationError, FilterConfig, FilterDepends, FilterQuery
 
 
@@ -235,6 +235,92 @@ def test_ops_none_params_do_not_exist_even_in_ignore_mode():
     r = client.get("/items", params={"ssn": "123-45-6789"})
     assert r.status_code == 200
     assert r.json()["applied"] == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 3a: arrays of scalars end to end.
+# ---------------------------------------------------------------------------
+
+
+def test_array_request_produces_expected_mongo_dict():
+    client = make_app(target=Tagged)
+    r = client.get(
+        "/items",
+        params=[
+            ("tags__has", "python"),
+            ("scores__has_any", "1,2"),
+            ("colors__has", "red"),
+            ("labels__empty", "false"),
+        ],
+    )
+    assert r.status_code == 200
+    assert r.json()["mongo"] == {
+        "tags": "python",
+        "scores": {"$in": [1, 2]},
+        "colors": "red",
+        "labels.0": {"$exists": True},
+    }
+
+
+def test_array_empty_true_and_len_compile_end_to_end():
+    client = make_app(target=Tagged, config=FilterConfig(default_profile="full"))
+    r = client.get("/items", params={"tags__empty": "true", "scores__len__gte": "2"})
+    assert r.status_code == 200
+    assert r.json()["mongo"] == {
+        "$and": [
+            {"tags": {"$eq": []}},
+            {
+                "$expr": {
+                    "$gte": [
+                        {"$size": {"$cond": [{"$isArray": "$scores"}, "$scores", []]}},
+                        2,
+                    ]
+                }
+            },
+        ]
+    }
+
+
+@pytest.mark.parametrize(
+    "params",
+    [
+        {"scores__has": "banana"},
+        {"tags__len__eq": "many"},
+        {"tags__empty": "maybe"},
+        {"colors__has": "chartreuse"},
+        {"sort": "tags"},  # arrays are not sortable by default
+    ],
+)
+def test_array_bad_values_return_422(params):
+    client = make_app(target=Tagged)
+    assert client.get("/items", params=params).status_code == 422
+
+
+def test_array_max_list_length_enforced_as_422():
+    client = make_app(target=Tagged, config=FilterConfig(max_list_length=2))
+    assert client.get("/items", params={"tags__has_any": "a,b,c"}).status_code == 422
+    assert client.get("/items", params={"tags__has_any": "a,b"}).status_code == 200
+
+
+def test_strict_mode_rejects_scalar_operator_on_array_field():
+    client = make_app(target=Tagged, config=FilterConfig(unknown_params="strict"))
+    # No scalar operators on arrays (design doc 02): `tags__contains` is
+    # never generated, so in strict mode it is a client error.
+    assert client.get("/items", params={"tags__contains": "py"}).status_code == 422
+
+
+def test_openapi_shows_typed_array_params():
+    client = make_app(target=Tagged)
+    spec = client.get("/openapi.json").json()
+    params = {p["name"]: p for p in spec["paths"]["/items"]["get"]["parameters"]}
+    assert params["tags__has"]["schema"]["anyOf"][0]["type"] == "string"
+    has_any = params["scores__has_any"]["schema"]["anyOf"][0]
+    assert has_any["type"] == "array" and has_any["items"]["type"] == "integer"
+    assert params["tags__len__eq"]["schema"]["anyOf"][0]["type"] == "integer"
+    assert params["tags__empty"]["schema"]["anyOf"][0]["type"] == "boolean"
+    assert "tags" not in params  # no bare-eq sugar for arrays
+    assert "tags__contains" not in params
+    assert "tags__len__gte" not in params  # full tier
 
 
 def test_openapi_reflects_param_rename_and_curated_ops():
