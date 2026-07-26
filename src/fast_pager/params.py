@@ -34,7 +34,9 @@ from .introspection import FieldSpec, introspect_model, public_field_names
 from .operators import (
     DEFAULT_REGISTRY,
     Arity,
+    Container,
     Operator,
+    ValueTypeRule,
     all_operators_for,
     operators_for,
     type_name,
@@ -65,6 +67,16 @@ _OP_HELP: dict[str, str] = {
     "text_search": "matches via the backend text index",
     "isnull": "is null (true) or is not null (false)",
     "exists": "exists in the document (true) or is missing (false)",
+    "has": "array contains the element",
+    "has_any": "array contains any of these elements (repeat the key or comma-join values)",
+    "has_all": "array contains all of these elements (repeat the key or comma-join values)",
+    "len__eq": "array length equals",
+    "len__ne": "array length does not equal",
+    "len__gt": "array length is greater than",
+    "len__gte": "array length is greater than or equal to",
+    "len__lt": "array length is less than",
+    "len__lte": "array length is less than or equal to",
+    "empty": "array is empty (true) or non-empty (false); a missing field matches neither",
 }
 
 
@@ -124,8 +136,10 @@ def _is_unfilterable(spec: FieldSpec) -> bool:
 
 def _validated_ops(names: tuple[str, ...], spec: FieldSpec, where: str) -> tuple[str, ...]:
     """Validate an explicit operator list for one field, with rich errors."""
-    valid = all_operators_for(spec.py_type, spec.nullable)
+    valid = all_operators_for(spec.py_type, spec.nullable, spec.container)
     tname = type_name(spec.py_type)
+    if spec.container is Container.LIST:
+        tname = f"list[{tname}]"
     for op_name in names:
         if op_name not in DEFAULT_REGISTRY:
             raise ConfigurationError(
@@ -170,6 +184,11 @@ def _ops_for_spec(spec: FieldSpec, config: FilterConfig) -> tuple[Operator, ...]
     ``ops.NONE`` never reach this function — they are dropped from the
     filterable set in :func:`build_plan`.
 
+    Array (``LIST``) fields resolve against the array operator profile;
+    ``type_profiles`` entries never apply to them — a per-type profile lists
+    *scalar* operators for a scalar type, not membership/shape operators for
+    arrays of that element type.
+
     Raises :class:`ConfigurationError` when an explicitly configured operator
     is unknown or not valid for the field's type.
     """
@@ -179,20 +198,26 @@ def _ops_for_spec(spec: FieldSpec, config: FilterConfig) -> tuple[Operator, ...]
         names = _validated_ops(tuple(overrides[spec.public_name]), spec, "FilterConfig.operators")
     elif isinstance(field_ops, OpsMarker):
         # ops.ALL — everything the type supports, still regex-gated.
-        names = all_operators_for(spec.py_type, spec.nullable)
+        names = all_operators_for(spec.py_type, spec.nullable, spec.container)
         if not config.allow_regex:
             names = tuple(n for n in names if n != "regex")
     elif field_ops is not None:
         names = _validated_ops(tuple(field_ops), spec, "Filterable(ops=...)")
     else:
-        profile_names = _match_type_profile(spec.py_type, config)
+        profile_names = (
+            _match_type_profile(spec.py_type, config)
+            if spec.container is Container.SCALAR
+            else None
+        )
         if profile_names is not None:
             # Validated for the type at config construction; drop the
             # nullable-only operators for non-nullable fields.
             valid = all_operators_for(spec.py_type, spec.nullable)
             names = tuple(n for n in profile_names if n in valid)
         else:
-            names = operators_for(spec.py_type, spec.nullable, config.default_profile)
+            names = operators_for(
+                spec.py_type, spec.nullable, config.default_profile, spec.container
+            )
             if not config.allow_regex:
                 # `regex` is additionally config-gated even under the full profile.
                 names = tuple(n for n in names if n != "regex")
@@ -200,8 +225,13 @@ def _ops_for_spec(spec: FieldSpec, config: FilterConfig) -> tuple[Operator, ...]
 
 
 def _value_annotation(spec: FieldSpec, op: Operator, config: FilterConfig) -> Any:
-    """Build the Pydantic annotation driving coercion/validation for one param."""
-    base: Any = spec.py_type
+    """Build the Pydantic annotation driving coercion/validation for one param.
+
+    ``spec.py_type`` is the element type for array fields, so ``has`` takes a
+    single element value and ``has_any``/``has_all`` take element lists; the
+    ``len__*`` operators are ``int``-valued regardless of the field type.
+    """
+    base: Any = int if op.value_type is ValueTypeRule.INT else spec.py_type
     if op.arity is Arity.BOOL:
         return Optional[bool]
     if op.arity is Arity.SINGLE:
@@ -321,17 +351,21 @@ def _resolve_sortable(
     """The sortable field set: config allow-list × per-field overrides.
 
     With no ``FilterConfig.sortable`` allow-list, the default is "sortable
-    iff filterable", plus fields forced in with ``Filterable(sortable=True)``
-    (which can make an ``ops.NONE`` field sort-only), minus fields opted out
-    with ``Filterable(sortable=False)``. When the allow-list *is* given it
-    wins — except ``sortable=False``, which is final and turns a conflicting
-    allow-list entry into a :class:`ConfigurationError`.
+    iff filterable" for scalar fields — array fields are *not* sortable by
+    default (sorting on Mongo array fields uses min/max element semantics,
+    which surprises people) — plus fields forced in with
+    ``Filterable(sortable=True)`` (which can make an ``ops.NONE`` field
+    sort-only, or an array field sortable, eyes open), minus fields opted
+    out with ``Filterable(sortable=False)``. When the allow-list *is* given
+    it wins (it may name array fields) — except ``sortable=False``, which is
+    final and turns a conflicting allow-list entry into a
+    :class:`ConfigurationError`.
     """
     flags = {s.public_name: s.filterable.sortable for s in specs if s.filterable is not None}
     non_sortable = {name for name, flag in flags.items() if flag is False}
     if config.sortable is None:
         forced = {name for name, flag in flags.items() if flag is True}
-        base = {s.public_name for s in filterable_specs}
+        base = {s.public_name for s in filterable_specs if s.container is Container.SCALAR}
         return frozenset((base | forced) - non_sortable)
     known = {s.public_name for s in specs}
     for name in config.sortable:

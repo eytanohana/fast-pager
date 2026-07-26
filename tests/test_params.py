@@ -5,7 +5,7 @@ from typing import Annotated
 import pytest
 from pydantic import BaseModel, ValidationError
 
-from conftest import Curated, User
+from conftest import Curated, Tagged, User
 from fast_pager import ConfigurationError, FilterConfig, Filterable
 from fast_pager.params import build_plan
 
@@ -331,3 +331,121 @@ def test_plan_records_known_params_for_strict_mode():
     plan = build_plan(User, FilterConfig())
     assert {"limit", "offset", "sort", "name", "age__gte"} <= plan.known_params
     assert "name__bogus" not in plan.known_params
+
+
+# ---------------------------------------------------------------------------
+# Phase 3a: arrays of scalars.
+# ---------------------------------------------------------------------------
+
+ARRAY_SAFE_PARAMS = {"tags__has", "tags__has_any", "tags__has_all", "tags__len__eq", "tags__empty"}
+
+
+def test_array_safe_profile_generates_membership_and_shape_params():
+    plan = build_plan(Tagged, FilterConfig())
+    assert names_for(plan, "tags") == ARRAY_SAFE_PARAMS
+
+
+def test_array_fields_get_no_scalar_operators_and_no_bare_equality():
+    names = url_names(build_plan(Tagged, FilterConfig(default_profile="full")))
+    assert "tags" not in names  # no bare-eq sugar for arrays
+    for scalar_op in ("eq", "ne", "in", "nin", "contains", "startswith", "regex"):
+        assert f"tags__{scalar_op}" not in names
+    for scalar_op in ("eq", "gt", "gte", "lt", "lte", "between"):
+        assert f"scores__{scalar_op}" not in names
+
+
+def test_array_full_profile_adds_len_comparisons():
+    safe = url_names(build_plan(Tagged, FilterConfig()))
+    full = url_names(build_plan(Tagged, FilterConfig(default_profile="full")))
+    ranges = {"tags__len__ne", "tags__len__gt", "tags__len__gte", "tags__len__lt", "tags__len__lte"}
+    assert not ranges & safe
+    assert ranges <= full
+
+
+def test_optional_list_gets_isnull_and_gated_exists():
+    safe = url_names(build_plan(Tagged, FilterConfig()))
+    full = url_names(build_plan(Tagged, FilterConfig(default_profile="full")))
+    assert "labels__isnull" in safe and "labels__exists" not in safe
+    assert "labels__exists" in full
+    assert "tags__isnull" not in safe  # non-nullable array
+
+
+def test_array_params_coerce_to_the_element_type():
+    plan = build_plan(Tagged, FilterConfig(default_profile="full"))
+    parsed = plan.params_model.model_validate(
+        {
+            "scores__has": "3",
+            "scores__has_any": ["1,2", "3"],
+            "tags__len__gte": "2",
+            "tags__empty": "true",
+        }
+    )
+    assert parsed.f_scores__has == 3
+    assert parsed.f_scores__has_any == [1, 2, 3]
+    assert parsed.f_tags__len__gte == 2
+    assert parsed.f_tags__empty is True
+    with pytest.raises(ValidationError):
+        plan.params_model.model_validate({"scores__has": "banana"})
+    with pytest.raises(ValidationError):
+        plan.params_model.model_validate({"tags__len__eq": "many"})
+
+
+def test_max_list_length_applies_to_has_any_and_has_all():
+    plan = build_plan(Tagged, FilterConfig(max_list_length=2))
+    assert plan.params_model.model_validate({"tags__has_any": ["a,b"]}).f_tags__has_any == [
+        "a",
+        "b",
+    ]
+    with pytest.raises(ValidationError):
+        plan.params_model.model_validate({"tags__has_any": ["a,b,c"]})
+    with pytest.raises(ValidationError):
+        plan.params_model.model_validate({"tags__has_all": ["a,b,c"]})
+
+
+def test_filterable_ops_curation_on_an_array_field():
+    class M(BaseModel):
+        tags: Annotated[list[str], Filterable(ops=["has", "empty"])]
+
+    plan = build_plan(M, FilterConfig())
+    assert names_for(plan, "tags") == {"tags__has", "tags__empty"}
+
+
+def test_config_operators_curation_on_an_array_field():
+    plan = build_plan(Tagged, FilterConfig(operators={"tags": ["has_any"]}))
+    assert names_for(plan, "tags") == {"tags__has_any"}
+
+
+def test_scalar_operator_on_array_field_raises_naming_the_list_type():
+    class M(BaseModel):
+        tags: Annotated[list[str], Filterable(ops=["contains"])]
+
+    with pytest.raises(
+        ConfigurationError,
+        match=r"operator 'contains' is not valid for field 'tags' of type list\[str\].*"
+        r"valid operators for list\[str\]: has, has_any, has_all",
+    ):
+        build_plan(M, FilterConfig())
+
+
+def test_type_profiles_do_not_apply_to_array_fields():
+    plan = build_plan(Tagged, FilterConfig(type_profiles={str: ["eq", "icontains"]}))
+    assert names_for(plan, "tags") == ARRAY_SAFE_PARAMS  # element profile ignored
+    assert names_for(plan, "name") == {"name", "name__eq", "name__icontains"}
+
+
+def test_array_fields_are_not_sortable_by_default():
+    plan = build_plan(Tagged, FilterConfig())
+    assert "name" in plan.sortable
+    assert plan.sortable & {"tags", "scores", "colors", "codes", "labels"} == set()
+
+
+def test_filterable_sortable_true_forces_an_array_field_sortable():
+    class M(BaseModel):
+        tags: Annotated[list[str], Filterable(sortable=True)]
+
+    assert "tags" in build_plan(M, FilterConfig()).sortable
+
+
+def test_config_sortable_allow_list_may_name_an_array_field():
+    plan = build_plan(Tagged, FilterConfig(sortable=["tags"]))
+    assert plan.sortable == frozenset({"tags"})
