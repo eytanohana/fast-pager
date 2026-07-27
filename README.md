@@ -37,6 +37,16 @@ GET /users?name__contains=ana&age__gte=21&age__lt=65&sort=-age&limit=20
 
 …and every one of those parameters is documented, validated and typed in `/docs`.
 
+Want the classic "items + total" response? `Page[T]` and `paginate()` are
+the one-line opt-in — correct OpenAPI schema included, works with motor and
+pymongo alike (duck-typed, no driver dependency):
+
+```python
+@app.get("/users", response_model=Page[User])
+async def list_users(q: FilterQuery[User] = FilterDepends(User)):
+    return await q.paginate(db.users)   # {"items": [...], "total": 137, "limit": 20, "offset": 0}
+```
+
 Need a curated public surface? Declare an allow-list `FilterSet` — anything
 not listed is not filterable — and the call site doesn't change:
 

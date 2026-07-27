@@ -48,6 +48,7 @@ nav = [
   ] },
   { "Reference" = [
       "reference/operators.md",
+      "reference/pagination.md",
   ] },
   { "Design" = [
       "design/index.md",

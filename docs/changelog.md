@@ -10,6 +10,41 @@ below. See the [Roadmap](design/05-roadmap-and-release.md) for what's coming
 next, and the [development plan](https://github.com/eytanohana/fast-pager/blob/main/DEVELOPMENT_PLAN.md)
 for the execution detail behind each stage.
 
+## `0.3.0` — Stage 4: response envelope & ergonomics
+
+The "list + total count" shape is now one line. **`Page[T]`** is a generic
+Pydantic response envelope (`items` / `total` / `limit` / `offset`), so
+`response_model=Page[User]` keeps response validation and the OpenAPI
+schema exactly right, and **`await q.paginate(collection)`** runs the
+compiled find (+ optional count) and fills it in. The collection is
+**duck-typed** against the standard Mongo surface (`find` → cursor with
+`sort`/`skip`/`limit` iterated via `to_list`/async/plain iteration,
+`count_documents`, `estimated_document_count`) with awaitables detected at
+runtime — motor, pymongo sync, pymongo async, and in-memory test fakes all
+work, and the core still imports **no driver** (a `[mongo]` extra exists
+purely as an install convenience). The count cost is a knob:
+`total="exact"` (default) counts with the same filter, `"none"` skips
+counting (`Page.total` is `None`), and `"estimated"` uses the metadata-based
+`estimated_document_count()` **only for unfiltered queries** — a filtered
+query falls back to an exact count per the design doc's pinned rule, so
+`total` is never a number unrelated to the results. Rounding out the
+ergonomics, `FilterConfig(pagination="page")` switches a route's generated
+parameters to a 1-based **`page`** + **`page_size`** pair (same
+`default_limit`/`max_limit` guardrails) that resolve to the identical
+internal window — `q.limit`/`q.offset`/`q.skip`, backends, and `paginate()`
+are strategy-agnostic.
+
+**One breaking change** (0.x minor bump per SemVer): the internal AST
+pagination-window dataclass previously exported as `fast_pager.Page` /
+`fast_pager.ast.Page` is renamed **`PageSpec`** — the public `Page` name
+now means the response envelope, matching design doc 01. Code that imported
+`Page` for AST work (custom backends implementing
+`QueryCompiler.compile_page`, direct AST construction) must switch to
+`PageSpec`; everything else is strictly additive. See the updated
+[Sorting & Pagination tutorial](tutorial/sorting-pagination.md) and the new
+[Pagination reference](reference/pagination.md). 100% test coverage,
+`mypy --strict` clean.
+
 ## `0.2.0` — Stage 3 complete: `FilterSet` + example app
 
 Stage 3 caps off with **`FilterSet`** (design doc 01 Option B): a
@@ -167,8 +202,11 @@ installable against `0.0.1` — see [Getting Started](getting-started.md).
 
 ## Coming next
 
-Stage 4 ships the response envelope in **`v0.3.0`**: an opt-in generic
-`Page[T]` model with `q.paginate(collection, total="exact|estimated|none")`
-(count cost as a knob, correct OpenAPI schema), plus the `page`/`page_size`
-strategy as sugar over offset. Tracked in
+Stage 5 ships the second backend in **`v0.4.0`**: a **conformance test
+suite** first (a fixed battery of `FilterAST → expected shape` cases every
+adapter must pass, run against `MongoCompiler` to lock in behavior), then a
+**SQLAlchemy** adapter (`Condition` → `ColumnElement`, capability
+declaration, `[sqlalchemy]` extra; flat tables + JSON/JSONB first) — the
+same example endpoints running on Mongo and SQLAlchemy with only a backend
+swap. Tracked in
 [design doc 05 — Roadmap & Release Plan](design/05-roadmap-and-release.md).
