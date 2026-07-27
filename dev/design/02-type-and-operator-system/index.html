@@ -1443,8 +1443,8 @@ per-field overrides layered on top.</p>
 </tr>
 <tr>
 <td><code>bytes</code></td>
-<td><em>(not filterable by default)</em></td>
-<td><code>eq</code></td>
+<td><em>(not filterable — descoped)</em></td>
+<td></td>
 </tr>
 </tbody>
 </table>
@@ -1697,8 +1697,17 @@ request time for <code>has_key</code> values (standard 422), and again in the co
 <p>Default: <strong>not filterable</strong> unless explicitly enabled.</p>
 <h3 id="uniona-b-non-optional-unions"><code>Union[A, B]</code> (non-optional unions)<a class="headerlink" href="#uniona-b-non-optional-unions" title="Permanent link">&para;</a></h3>
 <p>Discouraged for filtering — the operator set is ambiguous. Default: not
-filterable; the library logs a one-time warning naming the field and how to make
-it explicit (annotate it, or pick a concrete type via <code>FilterSet</code>).</p>
+filterable; the library emits a <strong>one-time <code>UserWarning</code></strong> naming the field so
+the skip is visible without being noisy. Use a concrete field type if the
+field should be filterable — an explicit <code>Filterable</code> on a union raises
+<code>ConfigurationError</code>, since there is no operator set to validate against.</p>
+<blockquote>
+<p><strong><code>bytes</code> descope note:</strong> the original table gave <code>bytes</code> a <code>full</code>-tier
+<code>eq</code>; in practice binary equality over a query string is a niche need with
+awkward encoding questions (base64? hex?), so <code>bytes</code> is fully descoped —
+it behaves like any unsupported type (silently skipped; explicit
+<code>Filterable</code> raises). Model binary lookups as string/UUID fields instead.</p>
+</blockquote>
 <hr />
 <h2 id="field-db-name-mapping-and-aliases">Field → DB-name mapping and aliases<a class="headerlink" href="#field-db-name-mapping-and-aliases" title="Permanent link">&para;</a></h2>
 <ul>
