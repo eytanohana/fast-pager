@@ -72,7 +72,10 @@ def test_unsupported_fields_are_skipped():
         either: Union[int, str]
         maybe_either: Optional[Union[int, str]] = None
 
-    assert set(spec_map(M)) == {"ok"}
+    # The bare unions announce their skip (one-time UserWarning each);
+    # the other unsupported shapes stay silent.
+    with pytest.warns(UserWarning, match="non-Optional Union"):
+        assert set(spec_map(M)) == {"ok"}
 
 
 def test_public_field_names_includes_unfilterable_fields():
@@ -522,3 +525,46 @@ def test_filterable_keys_on_a_non_map_field_raises():
 
     with pytest.raises(ConfigurationError, match=r"'name'.*keys.*not a dict"):
         introspect_model(M)
+
+
+class TestBareUnionWarning:
+    """Bare (non-Optional) unions are skipped with a one-time UserWarning."""
+
+    def test_bare_union_warns_and_is_skipped(self):
+        from fast_pager.introspection import _warned_unions
+
+        class WithUnion(BaseModel):
+            value: Union[int, str]
+            name: str
+
+        _warned_unions.clear()
+        with pytest.warns(UserWarning, match="non-Optional Union"):
+            specs = introspect_model(WithUnion)
+        assert [s.public_name for s in specs] == ["name"]
+
+    def test_warning_is_emitted_once_per_field(self):
+        import warnings as _warnings
+
+        from fast_pager.introspection import _warned_unions
+
+        class WithUnion2(BaseModel):
+            value: Union[int, str]
+
+        _warned_unions.clear()
+        with pytest.warns(UserWarning):
+            introspect_model(WithUnion2)
+        with _warnings.catch_warnings():
+            _warnings.simplefilter("error")
+            introspect_model(WithUnion2)  # second pass: no warning
+
+    def test_other_unsupported_types_stay_silent(self):
+        import warnings as _warnings
+
+        class WithBytes(BaseModel):
+            blob: bytes
+            name: str
+
+        with _warnings.catch_warnings():
+            _warnings.simplefilter("error")
+            specs = introspect_model(WithBytes)
+        assert [s.public_name for s in specs] == ["name"]

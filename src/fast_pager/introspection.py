@@ -61,6 +61,7 @@ depth strictly increases, so cycles terminate at the bound by construction.
 from __future__ import annotations
 
 import types
+import warnings
 from dataclasses import dataclass
 from typing import Any, Union, get_args, get_origin
 
@@ -128,6 +129,33 @@ class FieldSpec:
     def public_name(self) -> str:
         """The name clients use in query parameters."""
         return self.separator.join(self.path)
+
+
+_warned_unions: set[tuple[str, str]] = set()
+
+
+def _warn_union_once(model: type[BaseModel], field: str, base: Any) -> None:
+    """Emit a one-time :class:`UserWarning` for a skipped bare-union field.
+
+    A non-``Optional`` multi-arm union has no derivable operator set
+    (design doc 02), so the field is skipped; the warning makes the skip
+    visible once per (model, field) rather than silently on every
+    registration.
+    """
+    if get_origin(base) is not Union and get_origin(base) is not types.UnionType:
+        return
+    key = (f"{model.__module__}.{model.__qualname__}", field)
+    if key in _warned_unions:
+        return
+    _warned_unions.add(key)
+    warnings.warn(
+        f"field {field!r} of model {model.__name__} is a non-Optional Union "
+        f"({type_name(base)}) and is not filterable — fast-pager cannot derive "
+        f"an operator set for it. Use a concrete field type if it should be "
+        f"filterable; this warning is emitted once per field.",
+        UserWarning,
+        stacklevel=2,
+    )
 
 
 def _unwrap_optional(annotation: Any) -> tuple[Any, bool]:
@@ -352,5 +380,6 @@ def _walk(
                     f"Filterable but its type {type_name(base)} is not a supported "
                     f"filterable type"
                 )
+            _warn_union_once(model, name, base)
             continue
         specs.append(FieldSpec(py_type=py_type, container=container, **common))
