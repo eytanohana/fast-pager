@@ -30,7 +30,7 @@ per-field overrides layered on top.
 | `datetime`, `date`, `time` | `eq`, `ne`, `gt`, `gte`, `lt`, `lte` | `between` |
 | `UUID` | `eq`, `ne`, `in`, `nin` | |
 | `Enum` / `Literal[...]` | `eq`, `ne`, `in`, `nin` | |
-| `bytes` | *(not filterable by default)* | `eq` |
+| `bytes` | *(not filterable — descoped)* | |
 
 Notes:
 
@@ -281,8 +281,16 @@ Default: **not filterable** unless explicitly enabled.
 ### `Union[A, B]` (non-optional unions)
 
 Discouraged for filtering — the operator set is ambiguous. Default: not
-filterable; the library logs a one-time warning naming the field and how to make
-it explicit (annotate it, or pick a concrete type via `FilterSet`).
+filterable; the library emits a **one-time `UserWarning`** naming the field so
+the skip is visible without being noisy. Use a concrete field type if the
+field should be filterable — an explicit `Filterable` on a union raises
+`ConfigurationError`, since there is no operator set to validate against.
+
+> **`bytes` descope note:** the original table gave `bytes` a `full`-tier
+> `eq`; in practice binary equality over a query string is a niche need with
+> awkward encoding questions (base64? hex?), so `bytes` is fully descoped —
+> it behaves like any unsupported type (silently skipped; explicit
+> `Filterable` raises). Model binary lookups as string/UUID fields instead.
 
 ---
 
