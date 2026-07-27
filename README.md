@@ -90,6 +90,13 @@ It's built with [Zensical](https://zensical.org) from `docs/`; see
 [`docs/contributing/docs-site.md`](docs/contributing/docs-site.md) for how
 it's configured and how to preview it locally.
 
+## Contributing
+
+Dev setup, quality gates, and conventions live in
+[CONTRIBUTING.md](CONTRIBUTING.md). The short version: `uv sync --all-groups`,
+make ruff + mypy + pytest happy (CI enforces all three plus a coverage floor
+and an oldest-supported-dependencies job), and keep commits small.
+
 ## Releasing (maintainers)
 
 Releases are fully automated. From a clean `main`:
