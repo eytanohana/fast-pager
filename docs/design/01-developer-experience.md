@@ -232,7 +232,8 @@ remains available for full control.
 expensive on large collections. So `total` is `Optional[int]` in `Page[T]` and
 the cost is a knob: `paginate(..., total="exact" | "estimated" | "none")` —
 `estimated` uses `estimatedDocumentCount` where the backend offers it (only
-valid for unfiltered queries; the library falls back to `exact` or `none` and
+valid for unfiltered queries; the library falls back to `exact` (never a
+silently absent count the caller didn't ask for) and
 says so), and `none` skips the count entirely (the right default for
 infinite-scroll UIs and a natural fit with cursor pagination).
 
@@ -249,7 +250,8 @@ infinite-scroll UIs and a natural fit with cursor pagination).
 - **Unknown operators/params**: configurable — `ignore` (default, forgiving) or
   `strict` (422 on unrecognized `field__op`). The strict rule is precise: a
   parameter is rejected **iff** it contains the configured separator **and**
-  matches none of the generated (or reserved `limit`/`offset`/`sort`)
+  matches none of the generated (or reserved — `limit`/`offset`/`sort`, or
+  `page`/`page_size`/`sort` under the `page` pagination strategy)
   parameter names — i.e. it claims to be a `field__op` filter and isn't one.
   Separator-free parameters are never rejected, because the route (or another
   dependency) may legitimately declare its own and the filter dependency

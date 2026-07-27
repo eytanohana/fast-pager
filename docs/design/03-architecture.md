@@ -160,7 +160,8 @@ class Group:
 class FilterAST:
     where: Group                 # v1: a single top-level AND group
     order_by: list[Sort]         # [(field, ASC|DESC)]
-    page: Page                   # offset/limit (or cursor later)
+    page: PageSpec               # offset/limit (or cursor later); the public
+                                 # `Page` name is the response envelope (doc 01)
 ```
 
 The AST is plain data: trivially testable, serializable, loggable. It is the
@@ -177,7 +178,7 @@ class QueryCompiler(Protocol):
     supported_ops: frozenset[str]            # adapter declares what it can do
     def compile_where(self, group: Group) -> Any: ...
     def compile_order(self, order: list[Sort]) -> Any: ...
-    def compile_page(self, page: Page) -> Any: ...
+    def compile_page(self, page: PageSpec) -> Any: ...
 ```
 
 - At **registration time**, the chosen adapter's `supported_ops` is intersected
