@@ -458,6 +458,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Pagination">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#the-page-page_size-strategy" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        The <code>page</code> / <code>page_size</code> strategy
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -468,6 +485,23 @@
       </span>
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="Optional: a paginated response envelope">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#the-count-is-not-free" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        The count is not free
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -618,6 +652,35 @@
     
   
   Operator Reference
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/pagination/" class="md-nav__link">
+        
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 7v14M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"/></svg>
+  
+  <span class="md-ellipsis">
+    
+  
+  Pagination Reference
 
     
   </span>
@@ -1049,6 +1112,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Pagination">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#the-page-page_size-strategy" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        The <code>page</code> / <code>page_size</code> strategy
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -1059,6 +1139,23 @@
       </span>
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="Optional: a paginated response envelope">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#the-count-is-not-free" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        The count is not free
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -1131,35 +1228,120 @@ to Mongo's <code>skip</code>/<code>limit</code>:</p>
 <li><strong><code>max_limit</code></strong> — the hard ceiling; an unbounded <code>limit</code> is never allowed,
   even if a client asks for one.</li>
 </ul>
-<p>A <code>page</code> / <code>page_size</code> strategy (sugar over <code>offset</code>) and keyset/cursor
-pagination are on the roadmap — see
+<h3 id="the-page-page_size-strategy">The <code>page</code> / <code>page_size</code> strategy<a class="headerlink" href="#the-page-page_size-strategy" title="Permanent link">&para;</a></h3>
+<p>If your clients think in page numbers rather than offsets, switch the
+generated parameters with one config knob:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="nd">@app</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/users&quot;</span><span class="p">)</span>
+</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">list_users</span><span class="p">(</span>
+</span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>    <span class="n">q</span><span class="p">:</span> <span class="n">FilterQuery</span><span class="p">[</span><span class="n">User</span><span class="p">]</span> <span class="o">=</span> <span class="n">FilterDepends</span><span class="p">(</span><span class="n">User</span><span class="p">,</span> <span class="n">config</span><span class="o">=</span><span class="n">FilterConfig</span><span class="p">(</span><span class="n">pagination</span><span class="o">=</span><span class="s2">&quot;page&quot;</span><span class="p">)),</span>
+</span><span id="__span-5-4"><a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="p">):</span> <span class="o">...</span>
+</span></code></pre></div>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>?page=3&amp;page_size=20      # items 40–59
+</span></code></pre></div>
+<p><code>page</code> is 1-based (<code>page=0</code> is a 422) and <code>page_size</code> obeys the same
+guardrails as <code>limit</code> (<code>default_limit</code> when omitted, <code>max_limit</code> as the
+ceiling). It is pure sugar over offset: <code>q.limit</code>, <code>q.offset</code>, and <code>q.skip</code>
+resolve to the same window (<code>offset = (page - 1) * page_size</code>), so backends
+and <code>paginate()</code> below don't care which strategy a route uses. Keyset/cursor
+pagination is on the roadmap — see
 <a href="../../design/01-developer-experience/#pagination-sorting-first-class-per-the-name">design doc 01</a>
 for the full comparison.</p>
 <h2 id="optional-a-paginated-response-envelope">Optional: a paginated response envelope<a class="headerlink" href="#optional-a-paginated-response-envelope" title="Permanent link">&para;</a></h2>
 <p>By default <code>fast-pager</code> returns just the query — you decide how to shape the
-response. For the common "list + total count" shape, an opt-in helper is
-planned for a later release:</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="nd">@app</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/users&quot;</span><span class="p">,</span> <span class="n">response_model</span><span class="o">=</span><span class="n">Page</span><span class="p">[</span><span class="n">User</span><span class="p">])</span>
-</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">list_users</span><span class="p">(</span><span class="n">q</span><span class="p">:</span> <span class="n">FilterQuery</span><span class="p">[</span><span class="n">User</span><span class="p">]</span> <span class="o">=</span> <span class="n">FilterDepends</span><span class="p">(</span><span class="n">User</span><span class="p">)):</span>
-</span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>    <span class="k">return</span> <span class="k">await</span> <span class="n">q</span><span class="o">.</span><span class="n">paginate</span><span class="p">(</span><span class="n">db</span><span class="o">.</span><span class="n">users</span><span class="p">)</span>
+response. For the common "list + total count" shape, <code>Page[T]</code> and
+<code>q.paginate(collection)</code> are the opt-in sugar:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">fast_pager</span><span class="w"> </span><span class="kn">import</span> <span class="n">FilterDepends</span><span class="p">,</span> <span class="n">FilterQuery</span><span class="p">,</span> <span class="n">Page</span>
+</span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>
+</span><span id="__span-7-3"><a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a><span class="nd">@app</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/users&quot;</span><span class="p">,</span> <span class="n">response_model</span><span class="o">=</span><span class="n">Page</span><span class="p">[</span><span class="n">User</span><span class="p">])</span>
+</span><span id="__span-7-4"><a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">list_users</span><span class="p">(</span><span class="n">q</span><span class="p">:</span> <span class="n">FilterQuery</span><span class="p">[</span><span class="n">User</span><span class="p">]</span> <span class="o">=</span> <span class="n">FilterDepends</span><span class="p">(</span><span class="n">User</span><span class="p">)):</span>
+</span><span id="__span-7-5"><a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a>    <span class="k">return</span> <span class="k">await</span> <span class="n">q</span><span class="o">.</span><span class="n">paginate</span><span class="p">(</span><span class="n">db</span><span class="o">.</span><span class="n">users</span><span class="p">)</span>   <span class="c1"># find + count, one line</span>
 </span></code></pre></div>
-<div class="language-json highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="p">{</span>
-</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="w">  </span><span class="nt">&quot;items&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="w"> </span><span class="s2">&quot;...&quot;</span><span class="w"> </span><span class="p">],</span>
-</span><span id="__span-6-3"><a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="w">  </span><span class="nt">&quot;total&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">137</span><span class="p">,</span>
-</span><span id="__span-6-4"><a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="w">  </span><span class="nt">&quot;limit&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">20</span><span class="p">,</span>
-</span><span id="__span-6-5"><a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a><span class="w">  </span><span class="nt">&quot;offset&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">40</span>
-</span><span id="__span-6-6"><a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a><span class="p">}</span>
+<div class="language-json highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="p">{</span>
+</span><span id="__span-8-2"><a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a><span class="w">  </span><span class="nt">&quot;items&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="w"> </span><span class="s2">&quot;...&quot;</span><span class="w"> </span><span class="p">],</span>
+</span><span id="__span-8-3"><a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="w">  </span><span class="nt">&quot;total&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">137</span><span class="p">,</span>
+</span><span id="__span-8-4"><a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a><span class="w">  </span><span class="nt">&quot;limit&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">20</span><span class="p">,</span>
+</span><span id="__span-8-5"><a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a><span class="w">  </span><span class="nt">&quot;offset&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">40</span>
+</span><span id="__span-8-6"><a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a><span class="p">}</span>
 </span></code></pre></div>
-<p>The exact count is not free on a large collection, so <code>paginate(...)</code> will
-take a <code>total="exact" | "estimated" | "none"</code> knob rather than always
-running a <code>count_documents</code>. This ships in a later stage (see the
-<a href="../../design/05-roadmap-and-release/">roadmap</a>) — <code>to_mongo()</code> /
-<code>sort_mongo()</code> / <code>skip</code> / <code>limit</code> are the shipped building blocks and remain
-available regardless.</p>
+<p><code>Page[T]</code> is a <strong>generic Pydantic model</strong>, so <code>response_model=Page[User]</code>
+keeps response validation and the OpenAPI schema exactly right.
+<code>paginate()</code> runs the compiled filter, sort, and window (<code>to_mongo()</code> /
+<code>sort_mongo()</code> / <code>skip</code> / <code>limit</code> — which remain available for full
+control) against the collection you hand it.</p>
+<p>The collection is <strong>duck-typed</strong> — no driver is imported, awaitables are
+detected at runtime — so the same line works across drivers:</p>
+<div class="tabbed-set tabbed-alternate" data-tabs="1:2"><input checked="checked" id="__tabbed_1_1" name="__tabbed_1" type="radio" /><input id="__tabbed_1_2" name="__tabbed_1" type="radio" /><div class="tabbed-labels"><label for="__tabbed_1_1">motor / pymongo async</label><label for="__tabbed_1_2">pymongo (sync)</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<div class="language-python highlight"><pre><span></span><code><span id="__span-9-1"><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="n">client</span> <span class="o">=</span> <span class="n">AsyncIOMotorClient</span><span class="p">(</span><span class="o">...</span><span class="p">)</span>          <span class="c1"># or AsyncMongoClient(...)</span>
+</span><span id="__span-9-2"><a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a><span class="n">db</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">get_database</span><span class="p">(</span><span class="s2">&quot;app&quot;</span><span class="p">)</span>
+</span><span id="__span-9-3"><a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>
+</span><span id="__span-9-4"><a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a><span class="nd">@app</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/users&quot;</span><span class="p">,</span> <span class="n">response_model</span><span class="o">=</span><span class="n">Page</span><span class="p">[</span><span class="n">User</span><span class="p">])</span>
+</span><span id="__span-9-5"><a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">list_users</span><span class="p">(</span><span class="n">q</span><span class="p">:</span> <span class="n">FilterQuery</span><span class="p">[</span><span class="n">User</span><span class="p">]</span> <span class="o">=</span> <span class="n">FilterDepends</span><span class="p">(</span><span class="n">User</span><span class="p">)):</span>
+</span><span id="__span-9-6"><a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a>    <span class="k">return</span> <span class="k">await</span> <span class="n">q</span><span class="o">.</span><span class="n">paginate</span><span class="p">(</span><span class="n">db</span><span class="o">.</span><span class="n">users</span><span class="p">)</span>
+</span></code></pre></div>
+</div>
+<div class="tabbed-block">
+<div class="language-python highlight"><pre><span></span><code><span id="__span-10-1"><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="n">client</span> <span class="o">=</span> <span class="n">MongoClient</span><span class="p">(</span><span class="o">...</span><span class="p">)</span>
+</span><span id="__span-10-2"><a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a><span class="n">db</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">get_database</span><span class="p">(</span><span class="s2">&quot;app&quot;</span><span class="p">)</span>
+</span><span id="__span-10-3"><a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>
+</span><span id="__span-10-4"><a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a><span class="nd">@app</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/users&quot;</span><span class="p">,</span> <span class="n">response_model</span><span class="o">=</span><span class="n">Page</span><span class="p">[</span><span class="n">User</span><span class="p">])</span>
+</span><span id="__span-10-5"><a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">list_users</span><span class="p">(</span><span class="n">q</span><span class="p">:</span> <span class="n">FilterQuery</span><span class="p">[</span><span class="n">User</span><span class="p">]</span> <span class="o">=</span> <span class="n">FilterDepends</span><span class="p">(</span><span class="n">User</span><span class="p">)):</span>
+</span><span id="__span-10-6"><a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a>    <span class="c1"># Still awaited — paginate() drives sync collections too.</span>
+</span><span id="__span-10-7"><a id="__codelineno-10-7" name="__codelineno-10-7" href="#__codelineno-10-7"></a>    <span class="k">return</span> <span class="k">await</span> <span class="n">q</span><span class="o">.</span><span class="n">paginate</span><span class="p">(</span><span class="n">db</span><span class="o">.</span><span class="n">users</span><span class="p">)</span>
+</span></code></pre></div>
+</div>
+</div>
+</div>
+<h3 id="the-count-is-not-free">The count is not free<a class="headerlink" href="#the-count-is-not-free" title="Permanent link">&para;</a></h3>
+<p>An exact <code>total</code> runs <code>count_documents</code> with the same filter on <strong>every
+page request</strong> — expensive on large collections. So <code>Page.total</code> is
+optional and the cost is a knob:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-11-1"><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="k">return</span> <span class="k">await</span> <span class="n">q</span><span class="o">.</span><span class="n">paginate</span><span class="p">(</span><span class="n">db</span><span class="o">.</span><span class="n">users</span><span class="p">,</span> <span class="n">total</span><span class="o">=</span><span class="s2">&quot;none&quot;</span><span class="p">)</span>
+</span></code></pre></div>
+<table>
+<thead>
+<tr>
+<th><code>total=</code></th>
+<th>What runs</th>
+<th>Cost</th>
+<th><code>Page.total</code></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>"exact"</code> (default)</td>
+<td><code>count_documents(filter)</code></td>
+<td>A full count matching the filter, every request</td>
+<td>The exact count</td>
+</tr>
+<tr>
+<td><code>"estimated"</code></td>
+<td><code>estimated_document_count()</code> — <strong>only when no filters are applied</strong>; otherwise falls back to <code>"exact"</code></td>
+<td>Metadata read: effectively free (but never filter-aware)</td>
+<td>An estimate (or the exact fallback)</td>
+</tr>
+<tr>
+<td><code>"none"</code></td>
+<td>No count at all</td>
+<td>Free</td>
+<td><code>None</code></td>
+</tr>
+</tbody>
+</table>
+<p>The <code>"estimated"</code> fallback rule is deliberate: Mongo's
+<code>estimatedDocumentCount</code> cannot take a filter, so estimating a <em>filtered</em>
+query would return a number unrelated to the results. When the compiled
+filter is non-empty (or the collection offers no estimate method),
+<code>paginate()</code> quietly runs the exact count instead — you always get a
+truthful <code>total</code>. <code>"none"</code> is the right default for infinite-scroll UIs,
+and a natural fit for the future cursor strategy.</p>
 <h2 id="next">Next<a class="headerlink" href="#next" title="Permanent link">&para;</a></h2>
-<p>See the <a href="../../reference/operators/">Operator Reference</a> for every filter
-operator by type, or revisit <a href="../filtering/">Filtering</a> for the <code>field__op</code>
-convention.</p>
+<p>The <a href="../../reference/pagination/">Pagination reference</a> documents the
+<code>Page[T]</code> fields, the full <code>paginate()</code> contract, and the duck-typed
+collection surface. See the <a href="../../reference/operators/">Operator Reference</a>
+for every filter operator by type, or revisit <a href="../filtering/">Filtering</a> for
+the <code>field__op</code> convention.</p>
 
 
 

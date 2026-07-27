@@ -535,6 +535,35 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/pagination/" class="md-nav__link">
+        
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 7v14M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"/></svg>
+  
+  <span class="md-ellipsis">
+    
+  
+  Pagination Reference
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -1377,7 +1406,8 @@ remains available for full control.</p>
 expensive on large collections. So <code>total</code> is <code>Optional[int]</code> in <code>Page[T]</code> and
 the cost is a knob: <code>paginate(..., total="exact" | "estimated" | "none")</code> —
 <code>estimated</code> uses <code>estimatedDocumentCount</code> where the backend offers it (only
-valid for unfiltered queries; the library falls back to <code>exact</code> or <code>none</code> and
+valid for unfiltered queries; the library falls back to <code>exact</code> (never a
+silently absent count the caller didn't ask for) and
 says so), and <code>none</code> skips the count entirely (the right default for
 infinite-scroll UIs and a natural fit with cursor pagination).</p>
 <hr />
@@ -1392,7 +1422,8 @@ infinite-scroll UIs and a natural fit with cursor pagination).</p>
 <li><strong>Unknown operators/params</strong>: configurable — <code>ignore</code> (default, forgiving) or
   <code>strict</code> (422 on unrecognized <code>field__op</code>). The strict rule is precise: a
   parameter is rejected <strong>iff</strong> it contains the configured separator <strong>and</strong>
-  matches none of the generated (or reserved <code>limit</code>/<code>offset</code>/<code>sort</code>)
+  matches none of the generated (or reserved — <code>limit</code>/<code>offset</code>/<code>sort</code>, or
+  <code>page</code>/<code>page_size</code>/<code>sort</code> under the <code>page</code> pagination strategy)
   parameter names — i.e. it claims to be a <code>field__op</code> filter and isn't one.
   Separator-free parameters are never rejected, because the route (or another
   dependency) may legitimately declare its own and the filter dependency

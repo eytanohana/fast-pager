@@ -533,6 +533,35 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/pagination/" class="md-nav__link">
+        
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 7v14M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"/></svg>
+  
+  <span class="md-ellipsis">
+    
+  
+  Pagination Reference
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -934,6 +963,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#030-stage-4-response-envelope-ergonomics" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        <code>0.3.0</code> — Stage 4: response envelope &amp; ergonomics
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#020-stage-3-complete-filterset-example-app" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -1081,6 +1121,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#030-stage-4-response-envelope-ergonomics" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        <code>0.3.0</code> — Stage 4: response envelope &amp; ergonomics
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#020-stage-3-complete-filterset-example-app" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -1203,6 +1254,38 @@ unstable API, and breaking changes bump the minor version and are called out
 below. See the <a href="../design/05-roadmap-and-release/">Roadmap</a> for what's coming
 next, and the <a href="https://github.com/eytanohana/fast-pager/blob/main/DEVELOPMENT_PLAN.md">development plan</a>
 for the execution detail behind each stage.</p>
+<h2 id="030-stage-4-response-envelope-ergonomics"><code>0.3.0</code> — Stage 4: response envelope &amp; ergonomics<a class="headerlink" href="#030-stage-4-response-envelope-ergonomics" title="Permanent link">&para;</a></h2>
+<p>The "list + total count" shape is now one line. <strong><code>Page[T]</code></strong> is a generic
+Pydantic response envelope (<code>items</code> / <code>total</code> / <code>limit</code> / <code>offset</code>), so
+<code>response_model=Page[User]</code> keeps response validation and the OpenAPI
+schema exactly right, and <strong><code>await q.paginate(collection)</code></strong> runs the
+compiled find (+ optional count) and fills it in. The collection is
+<strong>duck-typed</strong> against the standard Mongo surface (<code>find</code> → cursor with
+<code>sort</code>/<code>skip</code>/<code>limit</code> iterated via <code>to_list</code>/async/plain iteration,
+<code>count_documents</code>, <code>estimated_document_count</code>) with awaitables detected at
+runtime — motor, pymongo sync, pymongo async, and in-memory test fakes all
+work, and the core still imports <strong>no driver</strong> (a <code>[mongo]</code> extra exists
+purely as an install convenience). The count cost is a knob:
+<code>total="exact"</code> (default) counts with the same filter, <code>"none"</code> skips
+counting (<code>Page.total</code> is <code>None</code>), and <code>"estimated"</code> uses the metadata-based
+<code>estimated_document_count()</code> <strong>only for unfiltered queries</strong> — a filtered
+query falls back to an exact count per the design doc's pinned rule, so
+<code>total</code> is never a number unrelated to the results. Rounding out the
+ergonomics, <code>FilterConfig(pagination="page")</code> switches a route's generated
+parameters to a 1-based <strong><code>page</code></strong> + <strong><code>page_size</code></strong> pair (same
+<code>default_limit</code>/<code>max_limit</code> guardrails) that resolve to the identical
+internal window — <code>q.limit</code>/<code>q.offset</code>/<code>q.skip</code>, backends, and <code>paginate()</code>
+are strategy-agnostic.</p>
+<p><strong>One breaking change</strong> (0.x minor bump per SemVer): the internal AST
+pagination-window dataclass previously exported as <code>fast_pager.Page</code> /
+<code>fast_pager.ast.Page</code> is renamed <strong><code>PageSpec</code></strong> — the public <code>Page</code> name
+now means the response envelope, matching design doc 01. Code that imported
+<code>Page</code> for AST work (custom backends implementing
+<code>QueryCompiler.compile_page</code>, direct AST construction) must switch to
+<code>PageSpec</code>; everything else is strictly additive. See the updated
+<a href="../tutorial/sorting-pagination/">Sorting &amp; Pagination tutorial</a> and the new
+<a href="../reference/pagination/">Pagination reference</a>. 100% test coverage,
+<code>mypy --strict</code> clean.</p>
 <h2 id="020-stage-3-complete-filterset-example-app"><code>0.2.0</code> — Stage 3 complete: <code>FilterSet</code> + example app<a class="headerlink" href="#020-stage-3-complete-filterset-example-app" title="Permanent link">&para;</a></h2>
 <p>Stage 3 caps off with <strong><code>FilterSet</code></strong> (design doc 01 Option B): a
 declarative class holding a <strong>strict allow-list</strong> filter surface apart from
@@ -1341,10 +1424,13 @@ the repository has CI + fully automated release tooling
 but <strong>no library functionality yet</strong>. Nothing in this documentation site is
 installable against <code>0.0.1</code> — see <a href="../getting-started/">Getting Started</a>.</p>
 <h2 id="coming-next">Coming next<a class="headerlink" href="#coming-next" title="Permanent link">&para;</a></h2>
-<p>Stage 4 ships the response envelope in <strong><code>v0.3.0</code></strong>: an opt-in generic
-<code>Page[T]</code> model with <code>q.paginate(collection, total="exact|estimated|none")</code>
-(count cost as a knob, correct OpenAPI schema), plus the <code>page</code>/<code>page_size</code>
-strategy as sugar over offset. Tracked in
+<p>Stage 5 ships the second backend in <strong><code>v0.4.0</code></strong>: a <strong>conformance test
+suite</strong> first (a fixed battery of <code>FilterAST → expected shape</code> cases every
+adapter must pass, run against <code>MongoCompiler</code> to lock in behavior), then a
+<strong>SQLAlchemy</strong> adapter (<code>Condition</code> → <code>ColumnElement</code>, capability
+declaration, <code>[sqlalchemy]</code> extra; flat tables + JSON/JSONB first) — the
+same example endpoints running on Mongo and SQLAlchemy with only a backend
+swap. Tracked in
 <a href="../design/05-roadmap-and-release/">design doc 05 — Roadmap &amp; Release Plan</a>.</p>
 
 
