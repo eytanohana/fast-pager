@@ -4,7 +4,7 @@ import dataclasses
 
 import pytest
 
-from fast_pager.ast import Condition, FilterAST, Group, Page, Sort, SortDirection
+from fast_pager.ast import Condition, FilterAST, Group, PageSpec, Sort, SortDirection
 
 
 def test_condition_is_frozen():
@@ -27,14 +27,14 @@ def test_sort_direction_values_match_mongo():
 def test_filter_ast_defaults():
     ast = FilterAST(where=Group(op="and", members=()))
     assert ast.order_by == ()
-    assert ast.page == Page(limit=50, offset=0)
+    assert ast.page == PageSpec(limit=50, offset=0)
 
 
 def test_filter_ast_composition():
     ast = FilterAST(
         where=Group(op="and", members=(Condition("age", "gte", 21),)),
         order_by=(Sort("age", SortDirection.DESC),),
-        page=Page(limit=10, offset=20),
+        page=PageSpec(limit=10, offset=20),
     )
     assert ast.where.members[0].field == "age"
     assert ast.page.offset == 20

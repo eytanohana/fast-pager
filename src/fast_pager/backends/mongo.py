@@ -32,7 +32,7 @@ import enum
 import re
 from typing import Any
 
-from ..ast import ELEM_SOURCE_MARKER, Condition, Group, Page, Sort
+from ..ast import ELEM_SOURCE_MARKER, Condition, Group, PageSpec, Sort
 from ..errors import CompilationError
 
 __all__ = ["MongoCompiler"]
@@ -147,7 +147,7 @@ class MongoCompiler:
         """Compile sort keys to ``[(field, 1|-1), ...]`` for ``sort()``."""
         return [(sort.field, sort.direction.value) for sort in order]
 
-    def compile_page(self, page: Page) -> dict[str, int]:
+    def compile_page(self, page: PageSpec) -> dict[str, int]:
         """Compile the pagination window to ``{"skip": ..., "limit": ...}``."""
         return {"skip": page.offset, "limit": page.limit}
 

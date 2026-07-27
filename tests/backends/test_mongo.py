@@ -2,7 +2,7 @@
 
 import pytest
 
-from fast_pager.ast import Condition, Group, Page, Sort, SortDirection
+from fast_pager.ast import Condition, Group, PageSpec, Sort, SortDirection
 from fast_pager.backends.base import QueryCompiler
 from fast_pager.backends.mongo import MongoCompiler
 from fast_pager.errors import CompilationError
@@ -194,7 +194,7 @@ def test_unknown_operator_raises_compilation_error():
 def test_compile_order_and_page():
     order = [Sort("age", SortDirection.DESC), Sort("name", SortDirection.ASC)]
     assert compiler.compile_order(order) == [("age", -1), ("name", 1)]
-    assert compiler.compile_page(Page(limit=10, offset=30)) == {"skip": 30, "limit": 10}
+    assert compiler.compile_page(PageSpec(limit=10, offset=30)) == {"skip": 30, "limit": 10}
 
 
 # ---------------------------------------------------------------------------

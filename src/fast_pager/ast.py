@@ -16,7 +16,7 @@ __all__ = [
     "Condition",
     "FilterAST",
     "Group",
-    "Page",
+    "PageSpec",
     "Sort",
     "SortDirection",
 ]
@@ -73,8 +73,12 @@ class Sort:
 
 
 @dataclass(frozen=True)
-class Page:
-    """Offset/limit pagination window."""
+class PageSpec:
+    """Offset/limit pagination window.
+
+    Renamed from ``Page`` in v0.3.0, freeing the public ``Page`` name for the
+    :class:`~fast_pager.pagination.Page` response envelope (design doc 01).
+    """
 
     limit: int
     offset: int
@@ -90,4 +94,4 @@ class FilterAST:
 
     where: Group
     order_by: tuple[Sort, ...] = ()
-    page: Page = field(default_factory=lambda: Page(limit=50, offset=0))
+    page: PageSpec = field(default_factory=lambda: PageSpec(limit=50, offset=0))

@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from typing import Any, Protocol, runtime_checkable
 
-from ..ast import Group, Page, Sort
+from ..ast import Group, PageSpec, Sort
 
 __all__ = ["QueryCompiler"]
 
@@ -33,6 +33,6 @@ class QueryCompiler(Protocol):
         """Compile sort keys into the backend's ordering representation."""
         ...
 
-    def compile_page(self, page: Page) -> Any:
+    def compile_page(self, page: PageSpec) -> Any:
         """Compile the pagination window into the backend's representation."""
         ...
