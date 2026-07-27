@@ -9,6 +9,10 @@
 #   ./scripts/release.sh current             # tag the current version as-is
 set -euo pipefail
 
+# uv colorizes output when it detects a TTY; escape codes must never leak
+# into version strings used for commit messages and tag names.
+export NO_COLOR=1
+
 BUMP="${1:?usage: release.sh patch|minor|major|current}"
 
 if [ -n "$(git status --porcelain)" ]; then
