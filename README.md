@@ -71,10 +71,11 @@ Claude Code). Design documents and code are AI-generated and human-reviewed.
 
 ## Status
 
-`fast-pager` is under **active development**. The `0.1.0` release ships
-Stages 1–2 in full: the zero-config scalar filtering pipeline, Mongo
-compiler, sorting/pagination, and per-field `Filterable(...)` control shown
-above — and the documentation describes exactly the shipped API. The project
+`fast-pager` is under **active development**. Everything shown above is
+shipped: the zero-config filtering pipeline over the full type surface
+(scalars, arrays, nested models, `elem` element-matching, gated maps), the
+Mongo compiler, per-field `Filterable(...)` control, allow-list
+`FilterSet`s, and the `Page[T]`/`paginate()` response envelope. The project
 is still pre-1.0: per SemVer, breaking changes bump the minor version and
 are called out in release notes. See the
 [changelog](https://fast-pager.eytanohana.com/latest/changelog/) for exactly
