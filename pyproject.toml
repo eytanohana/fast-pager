@@ -16,7 +16,7 @@ license = "MIT"
 license-files = ["LICENSE"]
 keywords = ["fastapi", "pagination", "filtering", "sorting", "pydantic", "mongodb"]
 classifiers = [
-    "Development Status :: 1 - Planning",
+    "Development Status :: 4 - Beta",
     "Programming Language :: Python",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3 :: Only",
@@ -28,6 +28,13 @@ classifiers = [
     "Topic :: Software Development :: Libraries",
     "Framework :: FastAPI",
     "Framework :: Pydantic",
+]
+
+[project.optional-dependencies]
+# Convenience extra for running the compiled queries; the core never
+# imports a driver — paginate() duck-types the collection object.
+mongo = [
+    "pymongo>=4.6",
 ]
 
 [project.urls]
