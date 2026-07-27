@@ -56,7 +56,6 @@ from .filterable import OpsMarker
 from .introspection import FieldSpec, introspect_model
 from .operators import DEFAULT_REGISTRY, all_operators_for, type_name
 from .params import (
-    RESERVED_PARAMS,
     QueryPlan,
     ResolvedParam,
     _build_params_model,
@@ -64,6 +63,7 @@ from .params import (
     _python_name,
     _resolve_sortable,
     _validated_ops,
+    reserved_params,
 )
 
 __all__ = ["ALL_OPS", "Filter", "FilterSet"]
@@ -312,7 +312,7 @@ def _resolve_filterset_params(
     where = f"{cls.__name__}.Meta.fields"
     params: list[ResolvedParam] = []
     seen: dict[str, str] = {
-        name: "(reserved pagination/sort parameter)" for name in RESERVED_PARAMS
+        name: "(reserved pagination/sort parameter)" for name in reserved_params(config)
     }
 
     def lookup(public_name: str, context: str) -> FieldSpec:
@@ -399,5 +399,5 @@ def _build_filterset_plan(cls: type[FilterSet]) -> QueryPlan:
         params_model=params_model,
         sortable=sortable,
         sources={s.public_name: s.source for s in specs},
-        known_params=frozenset(p.url_name for p in params) | frozenset(RESERVED_PARAMS),
+        known_params=frozenset(p.url_name for p in params) | frozenset(reserved_params(config)),
     )

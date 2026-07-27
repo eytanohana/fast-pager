@@ -75,6 +75,18 @@ def test_max_depth_default_and_zero():
     assert FilterConfig(max_depth=3) != FilterConfig()
 
 
+def test_pagination_strategy_validated():
+    assert FilterConfig().pagination == "offset"
+    assert FilterConfig(pagination="page").pagination == "page"
+    with pytest.raises(ConfigurationError, match="pagination"):
+        FilterConfig(pagination="cursor")
+
+
+def test_config_hash_covers_pagination_strategy():
+    assert FilterConfig(pagination="page") != FilterConfig()
+    assert FilterConfig(pagination="page") == FilterConfig(pagination="page")
+
+
 def test_config_hash_covers_type_profiles_and_unknown_params():
     a = FilterConfig(type_profiles={str: ["eq"]})
     b = FilterConfig(type_profiles={str: ("eq",)})

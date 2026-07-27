@@ -71,6 +71,13 @@ class FilterConfig:
             surface finite.
         default_limit: ``limit`` value when the client does not send one.
         max_limit: Upper bound on ``limit``; larger values are a 422.
+        pagination: The pagination parameter strategy. ``"offset"`` (default)
+            generates ``limit``/``offset``; ``"page"`` generates a 1-based
+            ``page`` and a ``page_size`` (defaulting to ``default_limit``,
+            bounded by ``max_limit``) that resolve to the same internal
+            offset window — ``FilterQuery.limit``/``offset``/``skip`` and
+            ``paginate()`` behave identically under either strategy. Sugar
+            over offset (design doc 01).
         max_list_length: Cap on elements in list-valued params (``in``/...).
         max_filters: Cap on simultaneously applied filters per request.
     """
@@ -88,6 +95,7 @@ class FilterConfig:
     max_limit: int = 100
     max_list_length: int = 100
     max_filters: int = 50
+    pagination: Literal["offset", "page"] = "offset"
 
     def __post_init__(self) -> None:
         """Validate internally-consistent settings eagerly, at construction."""
@@ -109,6 +117,10 @@ class FilterConfig:
         if self.unknown_params not in ("ignore", "strict"):
             raise ConfigurationError(
                 f"unknown_params must be 'ignore' or 'strict', got {self.unknown_params!r}"
+            )
+        if self.pagination not in ("offset", "page"):
+            raise ConfigurationError(
+                f"pagination must be 'offset' or 'page', got {self.pagination!r}"
             )
         self._validate_type_profiles()
 
@@ -159,6 +171,7 @@ class FilterConfig:
             self.max_limit,
             self.max_list_length,
             self.max_filters,
+            self.pagination,
         )
 
     def __hash__(self) -> int:

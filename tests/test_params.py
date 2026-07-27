@@ -831,3 +831,54 @@ def test_map_ops_curation_and_optional_map_isnull():
 
     plan = build_plan(M, FilterConfig())
     assert names_for(plan, "meta") == {"meta__isnull"}
+
+
+# ---------------------------------------------------------------------------
+# Stage 4: the page/page_size pagination strategy.
+# ---------------------------------------------------------------------------
+
+PAGED = FilterConfig(pagination="page")
+
+
+def test_page_strategy_generates_page_params_instead_of_offset():
+    plan = build_plan(User, PAGED)
+    fields = plan.params_model.model_fields
+    assert "page" in fields and "page_size" in fields
+    assert "limit" not in fields and "offset" not in fields
+    assert plan.known_params >= {"page", "page_size", "sort"}
+    assert "limit" not in plan.known_params
+
+
+def test_page_strategy_defaults_and_bounds():
+    plan = build_plan(User, PAGED)
+    parsed = plan.params_model.model_validate({})
+    assert parsed.page == 1 and parsed.page_size == 50
+    with pytest.raises(ValidationError):
+        plan.params_model.model_validate({"page": 0})
+    with pytest.raises(ValidationError):
+        plan.params_model.model_validate({"page_size": 101})
+    with pytest.raises(ValidationError):
+        plan.params_model.model_validate({"page_size": 0})
+
+
+def test_page_size_default_follows_default_limit():
+    plan = build_plan(User, FilterConfig(pagination="page", default_limit=10, max_limit=20))
+    assert plan.params_model.model_validate({}).page_size == 10
+    with pytest.raises(ValidationError):
+        plan.params_model.model_validate({"page_size": 21})
+
+
+def test_reserved_names_follow_the_active_strategy():
+    class WithPage(BaseModel):
+        page: int
+
+    class WithLimit(BaseModel):
+        limit: int
+
+    # `page` only collides under the page strategy; `limit` only under offset.
+    assert "page" in url_names(build_plan(WithPage, FilterConfig()))
+    with pytest.raises(ConfigurationError, match="'page'"):
+        build_plan(WithPage, PAGED)
+    assert "limit" in url_names(build_plan(WithLimit, PAGED))
+    with pytest.raises(ConfigurationError, match="'limit'"):
+        build_plan(WithLimit, FilterConfig())

@@ -102,3 +102,15 @@ def test_repr_is_informative():
     q = make_query({"age__gte": 21})
     text = repr(q)
     assert "User" in text and "gte" in text
+
+
+def test_page_strategy_resolves_to_the_same_offset_window():
+    q = make_query({"page": 3, "page_size": 20}, FilterConfig(pagination="page"))
+    assert q.limit == 20
+    assert q.offset == 40 and q.skip == 40
+    assert q.to_ast().page.limit == 20 and q.to_ast().page.offset == 40
+
+
+def test_page_strategy_defaults_resolve_to_the_first_page():
+    q = make_query({}, FilterConfig(pagination="page"))
+    assert q.limit == 50 and q.offset == 0 and q.skip == 0

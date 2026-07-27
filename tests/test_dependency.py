@@ -546,3 +546,59 @@ def test_openapi_reflects_param_rename_and_curated_ops():
     assert {"points", "points__gte", "name__contains"} <= params
     assert "score" not in params and "ssn" not in params
     assert "name__startswith" not in params  # outside the exact ops list
+
+
+# ---------------------------------------------------------------------------
+# Stage 4: the page/page_size pagination strategy end to end.
+# ---------------------------------------------------------------------------
+
+PAGED = FilterConfig(pagination="page")
+
+
+def test_page_strategy_resolves_to_skip_and_limit():
+    client = make_app(config=PAGED)
+    r = client.get("/items", params={"page": 3, "page_size": 20, "name": "a"})
+    assert r.status_code == 200
+    body = r.json()
+    assert body["skip"] == 40 and body["limit"] == 20
+    assert body["mongo"] == {"name": "a"}
+
+
+def test_page_strategy_defaults_to_the_first_page():
+    body = make_app(config=PAGED).get("/items").json()
+    assert body["skip"] == 0 and body["limit"] == 50
+
+
+@pytest.mark.parametrize(
+    "params",
+    [
+        {"page": "0"},
+        {"page": "-1"},
+        {"page_size": "0"},
+        {"page_size": "101"},  # over max_limit
+        {"page": "two"},
+    ],
+)
+def test_page_strategy_bad_values_return_422(params):
+    client = make_app(config=PAGED)
+    assert client.get("/items", params=params).status_code == 422
+
+
+def test_page_strategy_openapi_shows_the_strategy_params():
+    client = make_app(config=PAGED)
+    spec = client.get("/openapi.json").json()
+    params = {p["name"]: p for p in spec["paths"]["/items"]["get"]["parameters"]}
+    assert params["page"]["schema"]["default"] == 1
+    assert params["page"]["schema"]["minimum"] == 1
+    assert params["page_size"]["schema"]["default"] == 50
+    assert params["page_size"]["schema"]["maximum"] == 100
+    assert "limit" not in params and "offset" not in params
+
+
+def test_page_strategy_strict_mode_interplay():
+    client = make_app(config=FilterConfig(pagination="page", unknown_params="strict"))
+    # The strategy's own params are recognized; separator-free `limit` is
+    # left alone (it may belong to the route); a bogus filter still 422s.
+    assert client.get("/items", params={"page": 2, "page_size": 10}).status_code == 200
+    assert client.get("/items", params={"limit": 5}).status_code == 200
+    assert client.get("/items", params={"nmae__eq": "typo"}).status_code == 422

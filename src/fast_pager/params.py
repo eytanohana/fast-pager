@@ -42,10 +42,21 @@ from .operators import (
     type_name,
 )
 
-__all__ = ["QueryPlan", "ResolvedParam", "build_plan"]
+__all__ = ["QueryPlan", "ResolvedParam", "build_plan", "reserved_params"]
 
-#: Parameter names reserved for pagination and sorting.
-RESERVED_PARAMS: tuple[str, ...] = ("limit", "offset", "sort")
+
+def reserved_params(config: FilterConfig) -> tuple[str, ...]:
+    """The non-filter parameter names generated for one config's strategy.
+
+    Reserved against field-name collisions and always recognized by strict
+    mode: the sort parameter plus the active pagination strategy's pair —
+    ``limit``/``offset`` by default, ``page``/``page_size`` under
+    ``FilterConfig(pagination="page")``.
+    """
+    if config.pagination == "page":
+        return ("page", "page_size", "sort")
+    return ("limit", "offset", "sort")
+
 
 _OP_HELP: dict[str, str] = {
     "eq": "equals",
@@ -364,7 +375,7 @@ def _resolve_params(
     """Emit every ``(url name, field, operator)`` triple, detecting collisions."""
     params: list[ResolvedParam] = []
     seen: dict[str, str] = {
-        name: "(reserved pagination/sort parameter)" for name in RESERVED_PARAMS
+        name: "(reserved pagination/sort parameter)" for name in reserved_params(config)
     }
     for spec in specs:
         for op in _ops_for_spec(spec, config):
@@ -509,19 +520,34 @@ def _build_params_model(
             annotation,
             Field(None, alias=p.url_name, description=description),
         )
-    field_defs["limit"] = (
-        int,
-        Field(
-            config.default_limit,
-            ge=1,
-            le=config.max_limit,
-            description=f"Maximum number of items to return (max {config.max_limit}).",
-        ),
-    )
-    field_defs["offset"] = (
-        int,
-        Field(0, ge=0, description="Number of items to skip."),
-    )
+    if config.pagination == "page":
+        field_defs["page"] = (
+            int,
+            Field(1, ge=1, description="1-based page number."),
+        )
+        field_defs["page_size"] = (
+            int,
+            Field(
+                config.default_limit,
+                ge=1,
+                le=config.max_limit,
+                description=f"Number of items per page (max {config.max_limit}).",
+            ),
+        )
+    else:
+        field_defs["limit"] = (
+            int,
+            Field(
+                config.default_limit,
+                ge=1,
+                le=config.max_limit,
+                description=f"Maximum number of items to return (max {config.max_limit}).",
+            ),
+        )
+        field_defs["offset"] = (
+            int,
+            Field(0, ge=0, description="Number of items to skip."),
+        )
     field_defs["sort"] = (
         Annotated[Optional[str], _sort_checker(sortable)],
         Field(
@@ -571,7 +597,7 @@ def build_plan(model: type[BaseModel], config: FilterConfig) -> QueryPlan:
         # Keyed by public name for every visible field (including sort-only
         # ops.NONE fields) so sort tokens always map to their source name.
         sources={s.public_name: s.source for s in visible},
-        known_params=frozenset(p.url_name for p in params) | frozenset(RESERVED_PARAMS),
+        known_params=frozenset(p.url_name for p in params) | frozenset(reserved_params(config)),
     )
     _PLAN_CACHE[key] = plan
     return plan

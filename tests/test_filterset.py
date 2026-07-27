@@ -606,3 +606,16 @@ def test_filterset_query_surface_is_uniform_with_the_model_paths():
         zero_config.get("/items", params=params).json()
         == filterset.get("/items", params=params).json()
     )
+
+
+def test_filterset_meta_config_carries_the_page_strategy():
+    class PagedUserFilter(FilterSet):
+        class Meta:
+            model = User
+            fields = {"name": ["eq"]}
+            config = FilterConfig(pagination="page")
+
+    client = make_app(PagedUserFilter)
+    body = client.get("/items", params={"page": 2, "page_size": 5}).json()
+    assert body["skip"] == 5 and body["limit"] == 5
+    assert client.get("/items", params={"page": 0}).status_code == 422
