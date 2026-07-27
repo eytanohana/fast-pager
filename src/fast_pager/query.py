@@ -6,9 +6,10 @@ from typing import TYPE_CHECKING, Any, Generic, TypeVar
 
 from pydantic import BaseModel
 
-from .ast import Condition, FilterAST, Group, Page, Sort, SortDirection
+from .ast import Condition, FilterAST, Group, PageSpec, Sort, SortDirection
 from .backends.mongo import MongoCompiler
 from .operators import Arity
+from .pagination import Page, TotalMode, paginate_collection
 
 if TYPE_CHECKING:
     from .params import QueryPlan
@@ -29,7 +30,9 @@ class FilterQuery(Generic[ModelT]):
     - :meth:`to_mongo` — a plain dict ready for ``find()``;
     - :meth:`sort_mongo` — ``[(field, 1|-1), ...]`` ready for ``sort()``;
     - :attr:`skip` / :attr:`limit` — pagination ints;
-    - :attr:`applied` — the parsed conditions, for introspection.
+    - :attr:`applied` — the parsed conditions, for introspection;
+    - :meth:`paginate` — run the query against a Mongo-like collection and
+      return a :class:`~fast_pager.Page` envelope.
     """
 
     def __init__(self, plan: QueryPlan, raw: BaseModel) -> None:
@@ -69,12 +72,24 @@ class FilterQuery(Generic[ModelT]):
 
     @property
     def limit(self) -> int:
-        """The effective page size (client value, bounded by ``max_limit``)."""
+        """The effective page size (client value, bounded by ``max_limit``).
+
+        Under ``FilterConfig(pagination="page")`` this is the ``page_size``
+        parameter — the two strategies resolve to the same window.
+        """
+        if self._plan.config.pagination == "page":
+            return int(getattr(self._raw, "page_size"))
         return int(getattr(self._raw, "limit"))
 
     @property
     def offset(self) -> int:
-        """Number of items skipped before the page starts."""
+        """Number of items skipped before the page starts.
+
+        Under ``FilterConfig(pagination="page")`` this is computed from the
+        1-based ``page`` parameter: ``(page - 1) * page_size``.
+        """
+        if self._plan.config.pagination == "page":
+            return (int(getattr(self._raw, "page")) - 1) * self.limit
         return int(getattr(self._raw, "offset"))
 
     @property
@@ -87,7 +102,7 @@ class FilterQuery(Generic[ModelT]):
         return FilterAST(
             where=Group(op="and", members=self._conditions),
             order_by=self._sorts,
-            page=Page(limit=self.limit, offset=self.offset),
+            page=PageSpec(limit=self.limit, offset=self.offset),
         )
 
     def to_mongo(self) -> dict[str, Any]:
@@ -97,6 +112,40 @@ class FilterQuery(Generic[ModelT]):
     def sort_mongo(self) -> list[tuple[str, int]]:
         """Compile the sort keys to ``[(field, 1|-1), ...]`` for ``sort()``."""
         return _DEFAULT_COMPILER.compile_order(list(self._sorts))
+
+    async def paginate(self, collection: Any, *, total: TotalMode = "exact") -> Page[Any]:
+        """Run the find (+ optional count) and return a :class:`~fast_pager.Page`.
+
+        ``collection`` is duck-typed against the standard Mongo collection
+        surface — ``find(filter)`` returning a cursor with ``sort``/``skip``/
+        ``limit``, ``count_documents(filter)``, ``estimated_document_count()``
+        — with awaitables detected at runtime, so motor and pymongo (sync and
+        async) collections all work and no driver is ever imported. The
+        filter, sort keys, and pagination window are exactly this query's
+        :meth:`to_mongo`, :meth:`sort_mongo`, :attr:`skip`, and :attr:`limit`.
+
+        ``total`` prices the count explicitly (design doc 01):
+
+        - ``"exact"`` (default) — ``count_documents`` with the same filter;
+          correct but costly on large collections.
+        - ``"estimated"`` — the cheap, metadata-based
+          ``estimated_document_count()``, which is only meaningful for an
+          *unfiltered* query; when the compiled filter is non-empty (or the
+          collection has no such method) it **falls back to an exact count**.
+        - ``"none"`` — skip counting; ``Page.total`` is ``None`` (the right
+          default for infinite-scroll UIs).
+
+        An object without the expected surface raises :class:`TypeError`
+        naming what is missing.
+        """
+        return await paginate_collection(
+            collection,
+            where=self.to_mongo(),
+            order=self.sort_mongo(),
+            limit=self.limit,
+            offset=self.offset,
+            total=total,
+        )
 
     def __repr__(self) -> str:
         """Debug representation showing the applied filter conditions."""
