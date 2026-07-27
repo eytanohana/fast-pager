@@ -37,5 +37,33 @@ jobs:
       - name: Check formatting
         run: uv run ruff format --diff
 
+      - name: Type check
+        run: uv run mypy
+
+      - name: Run tests
+        run: uv run pytest tests
+
+  oldest-deps:
+    name: Test on oldest supported dependencies
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository ${{ github.repository }}
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd  # v5
+
+      - name: Setup uv and python
+        uses: astral-sh/setup-uv@681c641aba71e4a1c380be3ab5e12ad51f415867  # v7
+        with:
+          enable-cache: true
+          python-version: "3.11"
+          version: ${{ env.UV_VERSION }}
+
+      - name: Resolve lowest supported direct dependencies
+        # Proves the declared floors (fastapi>=0.115, pydantic>=2.7) are
+        # real, not aspirational. Regenerates the lock in CI only.
+        run: uv lock --resolution lowest-direct
+
+      - name: Install dependencies
+        run: uv sync --all-extras --dev
+
       - name: Run tests
         run: uv run pytest tests
