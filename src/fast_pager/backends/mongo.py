@@ -34,6 +34,7 @@ from typing import Any
 
 from ..ast import ELEM_SOURCE_MARKER, Condition, Group, PageSpec, Sort
 from ..errors import CompilationError
+from .base import Capability
 
 __all__ = ["MongoCompiler"]
 
@@ -55,6 +56,10 @@ class MongoCompiler:
     """Compiles :class:`~fast_pager.ast.FilterAST` parts to plain Mongo dicts."""
 
     name = "mongo"
+
+    capabilities: frozenset[Capability] = frozenset(Capability)
+    """Mongo expresses every structural feature: dotted nested paths and
+    same-element ``$elemMatch`` grouping alike."""
 
     supported_ops: frozenset[str] = frozenset(
         {

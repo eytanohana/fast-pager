@@ -22,7 +22,7 @@ Design documents: https://github.com/eytanohana/fast-pager
 from importlib.metadata import version
 
 from .ast import Condition, FilterAST, Group, PageSpec, Sort, SortDirection
-from .backends.base import QueryCompiler
+from .backends.base import Capability, QueryCompiler
 from .backends.mongo import MongoCompiler
 from .config import FilterConfig
 from .dependency import FilterDepends
@@ -37,6 +37,7 @@ from .query import FilterQuery
 __all__ = [
     "DEFAULT_REGISTRY",
     "Arity",
+    "Capability",
     "CompilationError",
     "Condition",
     "ConfigurationError",
