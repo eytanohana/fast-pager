@@ -8,6 +8,7 @@ from fastapi import Depends, Query, Request
 from fastapi.exceptions import RequestValidationError
 from pydantic import BaseModel
 
+from .backends.base import QueryCompiler, capabilities_for_path
 from .config import FilterConfig
 from .errors import ConfigurationError
 from .filterset import FilterSet, filterset_plan
@@ -15,6 +16,35 @@ from .params import QueryPlan, build_plan
 from .query import FilterQuery
 
 __all__ = ["FilterDepends"]
+
+
+def _validate_backend(plan: QueryPlan, backend: QueryCompiler, surface: str) -> None:
+    """Intersect the generated parameter surface with the backend's declaration.
+
+    The registration-time half of "never silently drop a filter" (design doc
+    04): every generated ``(field, operator)`` parameter must use an operator
+    in ``backend.supported_ops``, and its source path must only need
+    capabilities in ``backend.capabilities`` — otherwise the route fails at
+    startup with every offending parameter named, instead of a request-time
+    :class:`~fast_pager.errors.CompilationError`.
+    """
+    problems: list[str] = []
+    for p in plan.params:
+        op = p.operator.name
+        if op not in backend.supported_ops:
+            problems.append(f"parameter {p.url_name!r} uses unsupported operator {op!r}")
+            continue
+        missing = capabilities_for_path(p.spec.source) - backend.capabilities
+        if missing:
+            needs = ", ".join(sorted(capability.value for capability in missing))
+            problems.append(f"parameter {p.url_name!r} (source {p.spec.source!r}) needs {needs}")
+    if problems:
+        raise ConfigurationError(
+            f"backend {backend.name!r} cannot serve the filter surface of {surface}: "
+            + "; ".join(problems)
+            + ". Remove these parameters (Filterable(ops=...), FilterSet fields, or "
+            "FilterConfig.operators/exclude) or choose a backend that supports them."
+        )
 
 
 def _check_unknown_params(plan: QueryPlan, request: Request) -> None:
@@ -65,7 +95,12 @@ def _resolve_model(target: Any) -> type[BaseModel]:
     )
 
 
-def FilterDepends(target: Any, *, config: FilterConfig | None = None) -> Any:
+def FilterDepends(
+    target: Any,
+    *,
+    config: FilterConfig | None = None,
+    backend: QueryCompiler | None = None,
+) -> Any:
     """Create the FastAPI dependency for a model's filter/sort/page surface.
 
     Accepts the resource model directly (``FilterDepends(User)``), the typed
@@ -82,6 +117,15 @@ def FilterDepends(target: Any, *, config: FilterConfig | None = None) -> Any:
     FilterSet carries its own configuration in ``Meta.config``, so passing
     ``config=`` alongside one is a :class:`ConfigurationError` rather than a
     silent tiebreak.
+
+    ``backend=`` is an *optional* validation hook (design doc 04's
+    registration-time intersection): pass the compiler the route will
+    actually run on (e.g. ``SQLAlchemyCompiler(UserRow)``) and the generated
+    parameter surface is checked against its ``supported_ops`` and
+    ``capabilities`` — a parameter the backend cannot compile raises
+    :class:`ConfigurationError` at startup, naming every offending
+    parameter, instead of failing at request time. It does not change what
+    the dependency returns; ``q`` stays backend-agnostic.
     """
     if isinstance(target, type) and issubclass(target, FilterSet):
         if config is not None:
@@ -96,6 +140,9 @@ def FilterDepends(target: Any, *, config: FilterConfig | None = None) -> Any:
         model = _resolve_model(target)
         plan = build_plan(model, config if config is not None else FilterConfig())
         name = model.__name__
+
+    if backend is not None:
+        _validate_backend(plan, backend, name)
 
     def dependency(request: Request, raw: BaseModel) -> FilterQuery[Any]:
         if plan.config.unknown_params == "strict":
