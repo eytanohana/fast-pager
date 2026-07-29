@@ -57,8 +57,8 @@ Notes:
 
 - `isnull` → `field__isnull=true|false` (compiles to `{field: None}` /
   `{field: {$ne: None}}`, or `IS NULL` in SQL).
-- `exists` (Mongo-flavored; `full` only) → `{field: {$exists: bool}}`. For SQL
-  adapters `exists` aliases to `isnull` semantics or is rejected — adapters
+- `exists` (Mongo-flavored; `full` only) → `{field: {$exists: bool}}`. SQL
+  adapters **reject** `exists` (columns always exist — use `isnull`); adapters
   declare which operators they support (doc 03/04).
 
 ---

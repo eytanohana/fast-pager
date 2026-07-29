@@ -12,20 +12,28 @@ adapter class, not touching the core.
 class QueryCompiler(Protocol):
     name: str
     supported_ops: frozenset[str]
-    capabilities: Capabilities            # nested? arrays? text-search? regex?
+    capabilities: frozenset[Capability]   # structural features beyond operators
+                                          # (shipped: NESTED_PATHS, ELEM_MATCH)
 
     def compile_where(self, group: Group) -> Any: ...
     def compile_order(self, order: list[Sort]) -> Any: ...
     def compile_page(self, page: PageSpec) -> Any: ...
 ```
 
+Rejection is two-tier (shipped): **compile time, always** — an AST containing
+an operator or structural feature the adapter did not declare raises
+`CompilationError` naming the operator and backend; and **registration time,
+opt-in** — `FilterDepends(Model, backend=compiler)` intersects the generated
+parameter surface with the declaration and raises `ConfigurationError` naming
+every offending parameter before the app serves traffic.
+
 Two ideas make this robust across very different databases:
 
 1. **Capability declaration.** Not every store supports every operator (a key-value
    store has no `regex`; a SQL table has no array `$elemMatch` unless it's JSONB).
-   The adapter declares `supported_ops` and `capabilities`; the core intersects
-   these with the user's config **at registration time** and fails loudly if the
-   user asked for something the backend can't do. We never silently drop a filter.
+   The adapter declares `supported_ops` and `capabilities`; asking for something
+   the backend can't do fails loudly per the two-tier rejection above. We never
+   silently drop a filter.
 
 2. **Graceful capability tiers.** A backend can advertise a *subset* and still be
    first-class. `list[str]` array operators light up only where the backend can
@@ -49,13 +57,21 @@ Two ideas make this robust across very different databases:
 The highest-value second backend by far (largest FastAPI audience).
 
 - Compiles `Condition` → SQLAlchemy `ColumnElement` boolean expressions
-  (`column >= value`, `column.ilike(f"%{v}%")`, `column.in_(...)`).
+  (`column >= value`, `column.in_(...)`). Shipped semantics: the
+  `contains`-family uses `autoescape=True` LIKE (literal `%`/`_`, mirroring
+  the Mongo `re.escape` guarantee); `i*` variants are guaranteed
+  case-insensitive, plain variants are database-native LIKE (SQLite's
+  ASCII-insensitivity and MySQL collations documented); `exists` is
+  **rejected** rather than aliased (SQL columns always exist — use
+  `isnull`); array operators, `elem`, `has_key`, `regex`, and `text_search`
+  are declared unsupported rather than approximated.
 - Input model can be a Pydantic model *paired with* a SQLAlchemy model, or a
   SQLModel class (which is both). The introspector already understands Pydantic;
   the adapter maps field paths → columns.
-- Nested-model filtering maps to JOINs or JSON column access depending on schema;
-  initial support targets flat tables + JSON/JSONB columns, with relationship
-  JOINs as a follow-up.
+- Nested-model filtering maps to JOINs or JSON column access depending on
+  schema; shipped support is flat tables + JSON/JSONB columns (tuple-path
+  extraction with value-type-driven CASTs; datetimes as ISO strings, enums
+  by value), with relationship JOINs as a follow-up.
 - `pip install fast-pager[sqlalchemy]`.
 
 ### Tier 3 — Elasticsearch / OpenSearch
@@ -74,28 +90,33 @@ adapters can prove correctness.
 
 ## How the user selects a backend
 
-The backend is chosen at the call site / app setup, not baked into endpoints:
+The backend is chosen at the call site, not baked into the generated
+parameter surface (the shipped design; an app-global
+`configure(backend=...)`/`run(q)` dispatch remains a possible future
+convenience):
 
 ```python
-# app setup
-configure(backend=MongoCompiler())          # or SQLAlchemyCompiler(...), etc.
-
-# endpoint is backend-agnostic
-@app.get("/users")
-async def list_users(q: FilterQuery[User] = FilterDepends(User)):
-    return run(q)        # run() dispatches via the configured backend
+# Mongo:
+return await db.users.find(q.to_mongo()).to_list(None)
+# SQLAlchemy — same q, same params:
+return session.execute(q.apply_sqlalchemy(select(UserRow))).scalars().all()
+# optional early validation:
+q: FilterQuery[User] = FilterDepends(User, backend=SQLAlchemyCompiler(UserRow))
 ```
 
 Switching backends — or running two backends in one app — does not touch the
-endpoint signatures. This is the payoff of the AST boundary: **the database is a
+endpoint signatures or the generated parameters. This is the payoff of the AST boundary: **the database is a
 deployment detail, not an API-design decision.**
 
 ## A conformance suite is the real product moat
 
-To make "any DB" credible, we ship a **backend conformance test suite**: a fixed
-battery of `(FilterAST → expected-shape)` assertions plus, where feasible,
-integration tests against a containerized instance. Any adapter — first-party or
-community — runs the suite to claim compatibility. This keeps quality high as the
+To make "any DB" credible, we ship a **backend conformance test suite**
+(`fast_pager.conformance`, shipped): a fixed battery of `FilterAST` inputs
+covering every registry operator, with backend-neutral semantics enforced by
+the runner — declared cases must compile, undeclared cases must raise
+`CompilationError` naming the operator, invalid inputs must be rejected —
+while each backend supplies its own expected-output table. Any adapter —
+first-party or community — runs the suite to claim compatibility. This keeps quality high as the
 backend list grows and turns external contributions into a strength rather than a
 support burden.
 
