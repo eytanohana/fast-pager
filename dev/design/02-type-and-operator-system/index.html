@@ -564,6 +564,35 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/backends/" class="md-nav__link">
+        
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-database" viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14a9 3 0 0 0 18 0V5"/><path d="M3 12a9 3 0 0 0 18 0"/></svg>
+  
+  <span class="md-ellipsis">
+    
+  
+  Backends
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -1471,8 +1500,8 @@ per-field overrides layered on top.</p>
 <ul>
 <li><code>isnull</code> → <code>field__isnull=true|false</code> (compiles to <code>{field: None}</code> /
   <code>{field: {$ne: None}}</code>, or <code>IS NULL</code> in SQL).</li>
-<li><code>exists</code> (Mongo-flavored; <code>full</code> only) → <code>{field: {$exists: bool}}</code>. For SQL
-  adapters <code>exists</code> aliases to <code>isnull</code> semantics or is rejected — adapters
+<li><code>exists</code> (Mongo-flavored; <code>full</code> only) → <code>{field: {$exists: bool}}</code>. SQL
+  adapters <strong>reject</strong> <code>exists</code> (columns always exist — use <code>isnull</code>); adapters
   declare which operators they support (doc 03/04).</li>
 </ul>
 <hr />

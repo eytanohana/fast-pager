@@ -562,6 +562,35 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/backends/" class="md-nav__link">
+        
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-database" viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14a9 3 0 0 0 18 0V5"/><path d="M3 12a9 3 0 0 0 18 0"/></svg>
+  
+  <span class="md-ellipsis">
+    
+  
+  Backends
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -963,6 +992,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#040-stage-5-sqlalchemy-backend-conformance-suite" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        <code>0.4.0</code> — Stage 5: SQLAlchemy backend + conformance suite
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#030-stage-4-response-envelope-ergonomics" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -1121,6 +1161,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#040-stage-5-sqlalchemy-backend-conformance-suite" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        <code>0.4.0</code> — Stage 5: SQLAlchemy backend + conformance suite
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#030-stage-4-response-envelope-ergonomics" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -1254,6 +1305,46 @@ unstable API, and breaking changes bump the minor version and are called out
 below. See the <a href="../design/05-roadmap-and-release/">Roadmap</a> for what's coming
 next, and the <a href="https://github.com/eytanohana/fast-pager/blob/main/DEVELOPMENT_PLAN.md">development plan</a>
 for the execution detail behind each stage.</p>
+<h2 id="040-stage-5-sqlalchemy-backend-conformance-suite"><code>0.4.0</code> — Stage 5: SQLAlchemy backend + conformance suite<a class="headerlink" href="#040-stage-5-sqlalchemy-backend-conformance-suite" title="Permanent link">&para;</a></h2>
+<p>The database is now genuinely a deployment detail. <strong><code>SQLAlchemyCompiler</code></strong>
+(<code>fast_pager.backends.sqlalchemy</code>, behind the <code>[sqlalchemy]</code> extra — the
+core still imports no database code) compiles the same neutral AST to
+SQLAlchemy 2.0 constructs: conditions to <code>ColumnElement[bool]</code> expressions,
+groups to <code>and_</code>/<code>or_</code>, sorts to <code>asc()</code>/<code>desc()</code>, the window to
+limit/offset. On <code>FilterQuery</code> that surfaces as <strong><code>q.to_sqlalchemy(model)</code>
+/ <code>q.sort_sqlalchemy(model)</code></strong>, plus the one-liner
+<strong><code>q.apply_sqlalchemy(select(UserRow))</code></strong> (WHERE + ORDER BY +
+LIMIT/OFFSET, model inferred from a single-entity select). Substring
+operators use SQLAlchemy's <code>autoescape</code> LIKE helpers — <code>%</code>/<code>_</code> in user
+input match literally, mirroring the Mongo <code>re.escape()</code> guarantee — with
+the LIKE case-sensitivity dialect caveats documented rather than papered
+over (<code>i*</code> variants are the guaranteed-insensitive forms). Nested models
+map to <strong>JSON columns</strong>: dotted paths compile to JSON path access with
+value-type-driven CASTs (datetimes as ISO strings, enums by value).</p>
+<p>What SQL can't express is <strong>declared, not faked</strong> (design doc 04): backends
+now declare <code>capabilities</code> (<code>nested_paths</code>, <code>elem_match</code>) alongside
+<code>supported_ops</code>, and the SQLAlchemy backend rejects the array family,
+<code>elem</code> element matching, <code>has_key</code>, <code>regex</code>, <code>text_search</code>, and <code>exists</code>
+with a <code>CompilationError</code> naming the operator — never a silently dropped
+filter. The optional <strong><code>FilterDepends(..., backend=...)</code></strong> hook moves that
+check to <strong>registration time</strong>: the generated parameter surface is
+intersected with the backend's declaration and mismatches raise
+<code>ConfigurationError</code> at startup, naming every offending parameter.</p>
+<p>Backing it all is the <strong>backend conformance suite</strong>
+(<code>fast_pager.conformance</code>): a fixed battery of AST inputs covering every
+operator/container the core produces — merging, escaping/anchoring,
+<code>$elem</code> grouping, guarded length ranges, unsafe-map-key rejection, sort,
+paging — plus a runner enforcing the backend-neutral semantics; adapters
+supply their own expected-output tables. Both first-party backends run the
+full battery in CI, and third-party adapters can run it to claim
+compatibility. A second example app (<code>examples/sqlalchemy_app/</code>) serves
+the same endpoints as the Mongo example against a real in-memory SQLite
+database — only the backend swaps. See the new
+<a href="../reference/backends/">Backends reference</a> (selection guide + capability
+matrix). Strictly additive for applications; one contract note for adapter
+authors: the <code>QueryCompiler</code> protocol now includes the <code>capabilities</code>
+attribute, so custom compilers must declare it to satisfy the protocol.
+100% test coverage, <code>mypy --strict</code> clean.</p>
 <h2 id="030-stage-4-response-envelope-ergonomics"><code>0.3.0</code> — Stage 4: response envelope &amp; ergonomics<a class="headerlink" href="#030-stage-4-response-envelope-ergonomics" title="Permanent link">&para;</a></h2>
 <p>The "list + total count" shape is now one line. <strong><code>Page[T]</code></strong> is a generic
 Pydantic response envelope (<code>items</code> / <code>total</code> / <code>limit</code> / <code>offset</code>), so
@@ -1424,13 +1515,11 @@ the repository has CI + fully automated release tooling
 but <strong>no library functionality yet</strong>. Nothing in this documentation site is
 installable against <code>0.0.1</code> — see <a href="../getting-started/">Getting Started</a>.</p>
 <h2 id="coming-next">Coming next<a class="headerlink" href="#coming-next" title="Permanent link">&para;</a></h2>
-<p>Stage 5 ships the second backend in <strong><code>v0.4.0</code></strong>: a <strong>conformance test
-suite</strong> first (a fixed battery of <code>FilterAST → expected shape</code> cases every
-adapter must pass, run against <code>MongoCompiler</code> to lock in behavior), then a
-<strong>SQLAlchemy</strong> adapter (<code>Condition</code> → <code>ColumnElement</code>, capability
-declaration, <code>[sqlalchemy]</code> extra; flat tables + JSON/JSONB first) — the
-same example endpoints running on Mongo and SQLAlchemy with only a backend
-swap. Tracked in
+<p>Stage 6 ships <strong>cursor/keyset pagination</strong> in <strong><code>v0.5.0</code></strong>: opaque cursor
+tokens with an automatic unique tiebreaker (<code>_id</code> / primary key) appended
+to the sort key, on at least one backend and conformance-tested — plus the
+published <strong>adapter authoring guide</strong> documenting the <code>QueryCompiler</code>
+contract and conformance-suite usage for third-party backends. Tracked in
 <a href="../design/05-roadmap-and-release/">design doc 05 — Roadmap &amp; Release Plan</a>.</p>
 
 

@@ -703,6 +703,35 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../backends/" class="md-nav__link">
+        
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-database" viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14a9 3 0 0 0 18 0V5"/><path d="M3 12a9 3 0 0 0 18 0"/></svg>
+  
+  <span class="md-ellipsis">
+    
+  
+  Backends
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -1234,6 +1263,17 @@ is in the
 <a href="../../tutorial/controlling-fields/">Controlling the filter surface</a> tutorial.
 Whatever the layer, an operator that is not <em>valid</em> for the field's type is
 rejected at route registration, never at request time.</p>
+<div class="admonition note">
+<p class="admonition-title">Backend support varies</p>
+<p>The compiled examples below show the <strong>MongoDB</strong> forms. Not every
+operator exists on every backend — the SQLAlchemy backend, for
+instance, supports the scalar operators but rejects the array family,
+<code>elem</code> matching, <code>has_key</code>, <code>regex</code>, <code>text_search</code>, and <code>exists</code> (a
+<code>CompilationError</code>, never a silent drop). The full operator × backend
+matrix — and the <code>FilterDepends(..., backend=...)</code> hook that validates
+a route's surface at startup — is in the
+<a href="../backends/">Backends reference</a>.</p>
+</div>
 <h2 id="scalar-types">Scalar types<a class="headerlink" href="#scalar-types" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
@@ -1302,7 +1342,7 @@ the common case (<code>?status=active</code>) stays clean.</p>
 <tr>
 <td><code>exists</code></td>
 <td><code>full</code></td>
-<td>Mongo-flavored presence check (<code>{field: {$exists: bool}}</code>); SQL adapters alias it to <code>isnull</code> semantics or reject it</td>
+<td>Mongo-flavored presence check (<code>{field: {$exists: bool}}</code>); the SQLAlchemy backend rejects it — SQL columns always exist, use <code>isnull</code></td>
 </tr>
 </tbody>
 </table>
@@ -1394,6 +1434,10 @@ expose exactly this family, whatever the element type:</p>
   <code>FilterConfig(sortable=[...])</code>.</li>
 <li>Element-level substring matching (<code>tags__has_substr</code>) is designed but not
   shipped yet.</li>
+<li><strong>The array family is Mongo-only today</strong> — generic SQL has no portable
+  array predicates, so the SQLAlchemy backend
+  <a href="../backends/#capabilities-what-each-backend-declares">declares it unsupported</a>
+  and rejects it loudly.</li>
 </ul>
 <p>Multi-token names like <code>tags__len__gte</code> need no special parsing rules: every
 parameter is pre-generated with its exact name at registration, so the full
@@ -1537,6 +1581,10 @@ array field gets its own <code>$elemMatch</code>.)</p>
   on the <code>list[NestedModel]</code> field (or <code>FilterConfig(exclude=["orders"])</code>)
   removes the field and every <code>elem</code> descendant;
   <code>exclude=["orders__elem__amount"]</code> removes a single element field.</li>
+<li><strong><code>elem</code> matching is Mongo-only today</strong>: SQL has no <code>$elemMatch</code>
+  equivalent and <code>fast-pager</code> does not fake same-element semantics — the
+  SQLAlchemy backend rejects <code>elem</code> paths
+  (<a href="../backends/#capabilities-what-each-backend-declares">Backends reference</a>).</li>
 </ul>
 <h2 id="maps-dictstr-t">Maps — <code>dict[str, T]</code><a class="headerlink" href="#maps-dictstr-t" title="Permanent link">&para;</a></h2>
 <p>Free-form maps clash with a core promise — every parameter is
@@ -1595,6 +1643,9 @@ it:</p>
   <code>FilterConfig(sortable=["metadata__region"])</code> — it compiles to the dotted
   <code>metadata.region</code>. <code>Optional[dict[str, T]]</code> adds <code>isnull</code> (<code>safe</code>) and
   <code>exists</code> (<code>full</code>).</li>
+<li><strong><code>has_key</code> is Mongo-only today</strong> — JSON key existence is
+  dialect-specific in SQL, so the SQLAlchemy backend rejects it
+  (<a href="../backends/#capabilities-what-each-backend-declares">Backends reference</a>).</li>
 </ul>
 <h2 id="operator-semantics">Operator semantics<a class="headerlink" href="#operator-semantics" title="Permanent link">&para;</a></h2>
 <table>

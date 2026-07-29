@@ -564,6 +564,35 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/backends/" class="md-nav__link">
+        
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-database" viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14a9 3 0 0 0 18 0V5"/><path d="M3 12a9 3 0 0 0 18 0"/></svg>
+  
+  <span class="md-ellipsis">
+    
+  
+  Backends
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -1250,20 +1279,27 @@ adapter class, not touching the core.</p>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="k">class</span><span class="w"> </span><span class="nc">QueryCompiler</span><span class="p">(</span><span class="n">Protocol</span><span class="p">):</span>
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>    <span class="n">name</span><span class="p">:</span> <span class="nb">str</span>
 </span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>    <span class="n">supported_ops</span><span class="p">:</span> <span class="nb">frozenset</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
-</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>    <span class="n">capabilities</span><span class="p">:</span> <span class="n">Capabilities</span>            <span class="c1"># nested? arrays? text-search? regex?</span>
-</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>
-</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">compile_where</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">group</span><span class="p">:</span> <span class="n">Group</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span> <span class="o">...</span>
-</span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">compile_order</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">order</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">Sort</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span> <span class="o">...</span>
-</span><span id="__span-0-8"><a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">compile_page</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">page</span><span class="p">:</span> <span class="n">PageSpec</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span> <span class="o">...</span>
+</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>    <span class="n">capabilities</span><span class="p">:</span> <span class="nb">frozenset</span><span class="p">[</span><span class="n">Capability</span><span class="p">]</span>   <span class="c1"># structural features beyond operators</span>
+</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>                                          <span class="c1"># (shipped: NESTED_PATHS, ELEM_MATCH)</span>
+</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>
+</span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">compile_where</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">group</span><span class="p">:</span> <span class="n">Group</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span> <span class="o">...</span>
+</span><span id="__span-0-8"><a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">compile_order</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">order</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">Sort</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span> <span class="o">...</span>
+</span><span id="__span-0-9"><a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">compile_page</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">page</span><span class="p">:</span> <span class="n">PageSpec</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span> <span class="o">...</span>
 </span></code></pre></div>
+<p>Rejection is two-tier (shipped): <strong>compile time, always</strong> — an AST containing
+an operator or structural feature the adapter did not declare raises
+<code>CompilationError</code> naming the operator and backend; and <strong>registration time,
+opt-in</strong> — <code>FilterDepends(Model, backend=compiler)</code> intersects the generated
+parameter surface with the declaration and raises <code>ConfigurationError</code> naming
+every offending parameter before the app serves traffic.</p>
 <p>Two ideas make this robust across very different databases:</p>
 <ol>
 <li>
 <p><strong>Capability declaration.</strong> Not every store supports every operator (a key-value
    store has no <code>regex</code>; a SQL table has no array <code>$elemMatch</code> unless it's JSONB).
-   The adapter declares <code>supported_ops</code> and <code>capabilities</code>; the core intersects
-   these with the user's config <strong>at registration time</strong> and fails loudly if the
-   user asked for something the backend can't do. We never silently drop a filter.</p>
+   The adapter declares <code>supported_ops</code> and <code>capabilities</code>; asking for something
+   the backend can't do fails loudly per the two-tier rejection above. We never
+   silently drop a filter.</p>
 </li>
 <li>
 <p><strong>Graceful capability tiers.</strong> A backend can advertise a <em>subset</em> and still be
@@ -1287,13 +1323,21 @@ adapter class, not touching the core.</p>
 <p>The highest-value second backend by far (largest FastAPI audience).</p>
 <ul>
 <li>Compiles <code>Condition</code> → SQLAlchemy <code>ColumnElement</code> boolean expressions
-  (<code>column &gt;= value</code>, <code>column.ilike(f"%{v}%")</code>, <code>column.in_(...)</code>).</li>
+  (<code>column &gt;= value</code>, <code>column.in_(...)</code>). Shipped semantics: the
+  <code>contains</code>-family uses <code>autoescape=True</code> LIKE (literal <code>%</code>/<code>_</code>, mirroring
+  the Mongo <code>re.escape</code> guarantee); <code>i*</code> variants are guaranteed
+  case-insensitive, plain variants are database-native LIKE (SQLite's
+  ASCII-insensitivity and MySQL collations documented); <code>exists</code> is
+  <strong>rejected</strong> rather than aliased (SQL columns always exist — use
+  <code>isnull</code>); array operators, <code>elem</code>, <code>has_key</code>, <code>regex</code>, and <code>text_search</code>
+  are declared unsupported rather than approximated.</li>
 <li>Input model can be a Pydantic model <em>paired with</em> a SQLAlchemy model, or a
   SQLModel class (which is both). The introspector already understands Pydantic;
   the adapter maps field paths → columns.</li>
-<li>Nested-model filtering maps to JOINs or JSON column access depending on schema;
-  initial support targets flat tables + JSON/JSONB columns, with relationship
-  JOINs as a follow-up.</li>
+<li>Nested-model filtering maps to JOINs or JSON column access depending on
+  schema; shipped support is flat tables + JSON/JSONB columns (tuple-path
+  extraction with value-type-driven CASTs; datetimes as ISO strings, enums
+  by value), with relationship JOINs as a follow-up.</li>
 <li><code>pip install fast-pager[sqlalchemy]</code>.</li>
 </ul>
 <h3 id="tier-3-elasticsearch-opensearch">Tier 3 — Elasticsearch / OpenSearch<a class="headerlink" href="#tier-3-elasticsearch-opensearch" title="Permanent link">&para;</a></h3>
@@ -1309,23 +1353,28 @@ packages</strong> (<code>fast-pager-dynamodb</code>) that just implement <code>Q
 publish the adapter authoring guide and a conformance test suite so external
 adapters can prove correctness.</p>
 <h2 id="how-the-user-selects-a-backend">How the user selects a backend<a class="headerlink" href="#how-the-user-selects-a-backend" title="Permanent link">&para;</a></h2>
-<p>The backend is chosen at the call site / app setup, not baked into endpoints:</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="c1"># app setup</span>
-</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="n">configure</span><span class="p">(</span><span class="n">backend</span><span class="o">=</span><span class="n">MongoCompiler</span><span class="p">())</span>          <span class="c1"># or SQLAlchemyCompiler(...), etc.</span>
-</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>
-</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="c1"># endpoint is backend-agnostic</span>
-</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="nd">@app</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/users&quot;</span><span class="p">)</span>
-</span><span id="__span-1-6"><a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">list_users</span><span class="p">(</span><span class="n">q</span><span class="p">:</span> <span class="n">FilterQuery</span><span class="p">[</span><span class="n">User</span><span class="p">]</span> <span class="o">=</span> <span class="n">FilterDepends</span><span class="p">(</span><span class="n">User</span><span class="p">)):</span>
-</span><span id="__span-1-7"><a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>    <span class="k">return</span> <span class="n">run</span><span class="p">(</span><span class="n">q</span><span class="p">)</span>        <span class="c1"># run() dispatches via the configured backend</span>
+<p>The backend is chosen at the call site, not baked into the generated
+parameter surface (the shipped design; an app-global
+<code>configure(backend=...)</code>/<code>run(q)</code> dispatch remains a possible future
+convenience):</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="c1"># Mongo:</span>
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="k">return</span> <span class="k">await</span> <span class="n">db</span><span class="o">.</span><span class="n">users</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="n">q</span><span class="o">.</span><span class="n">to_mongo</span><span class="p">())</span><span class="o">.</span><span class="n">to_list</span><span class="p">(</span><span class="kc">None</span><span class="p">)</span>
+</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="c1"># SQLAlchemy — same q, same params:</span>
+</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="k">return</span> <span class="n">session</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="n">q</span><span class="o">.</span><span class="n">apply_sqlalchemy</span><span class="p">(</span><span class="n">select</span><span class="p">(</span><span class="n">UserRow</span><span class="p">)))</span><span class="o">.</span><span class="n">scalars</span><span class="p">()</span><span class="o">.</span><span class="n">all</span><span class="p">()</span>
+</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="c1"># optional early validation:</span>
+</span><span id="__span-1-6"><a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="n">q</span><span class="p">:</span> <span class="n">FilterQuery</span><span class="p">[</span><span class="n">User</span><span class="p">]</span> <span class="o">=</span> <span class="n">FilterDepends</span><span class="p">(</span><span class="n">User</span><span class="p">,</span> <span class="n">backend</span><span class="o">=</span><span class="n">SQLAlchemyCompiler</span><span class="p">(</span><span class="n">UserRow</span><span class="p">))</span>
 </span></code></pre></div>
 <p>Switching backends — or running two backends in one app — does not touch the
-endpoint signatures. This is the payoff of the AST boundary: <strong>the database is a
+endpoint signatures or the generated parameters. This is the payoff of the AST boundary: <strong>the database is a
 deployment detail, not an API-design decision.</strong></p>
 <h2 id="a-conformance-suite-is-the-real-product-moat">A conformance suite is the real product moat<a class="headerlink" href="#a-conformance-suite-is-the-real-product-moat" title="Permanent link">&para;</a></h2>
-<p>To make "any DB" credible, we ship a <strong>backend conformance test suite</strong>: a fixed
-battery of <code>(FilterAST → expected-shape)</code> assertions plus, where feasible,
-integration tests against a containerized instance. Any adapter — first-party or
-community — runs the suite to claim compatibility. This keeps quality high as the
+<p>To make "any DB" credible, we ship a <strong>backend conformance test suite</strong>
+(<code>fast_pager.conformance</code>, shipped): a fixed battery of <code>FilterAST</code> inputs
+covering every registry operator, with backend-neutral semantics enforced by
+the runner — declared cases must compile, undeclared cases must raise
+<code>CompilationError</code> naming the operator, invalid inputs must be rejected —
+while each backend supplies its own expected-output table. Any adapter —
+first-party or community — runs the suite to claim compatibility. This keeps quality high as the
 backend list grows and turns external contributions into a strength rather than a
 support burden.</p>
 <h2 id="honest-scope-note">Honest scope note<a class="headerlink" href="#honest-scope-note" title="Permanent link">&para;</a></h2>
