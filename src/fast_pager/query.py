@@ -32,7 +32,11 @@ class FilterQuery(Generic[ModelT]):
     - :attr:`skip` / :attr:`limit` — pagination ints;
     - :attr:`applied` — the parsed conditions, for introspection;
     - :meth:`paginate` — run the query against a Mongo-like collection and
-      return a :class:`~fast_pager.Page` envelope.
+      return a :class:`~fast_pager.Page` envelope;
+    - :meth:`to_sqlalchemy` / :meth:`sort_sqlalchemy` /
+      :meth:`apply_sqlalchemy` — the SQLAlchemy counterparts (requires the
+      ``[sqlalchemy]`` extra; the import happens lazily, so the core never
+      depends on it).
     """
 
     def __init__(self, plan: QueryPlan, raw: BaseModel) -> None:
@@ -112,6 +116,55 @@ class FilterQuery(Generic[ModelT]):
     def sort_mongo(self) -> list[tuple[str, int]]:
         """Compile the sort keys to ``[(field, 1|-1), ...]`` for ``sort()``."""
         return _DEFAULT_COMPILER.compile_order(list(self._sorts))
+
+    def _sqlalchemy_compiler(self, model: Any) -> Any:
+        # Imported lazily so the core works without SQLAlchemy installed;
+        # the module raises a clear ImportError pointing at the extra.
+        from .backends.sqlalchemy import SQLAlchemyCompiler
+
+        return SQLAlchemyCompiler(model)
+
+    def to_sqlalchemy(self, model: Any) -> Any:
+        """Compile the filter conditions to a SQLAlchemy boolean expression.
+
+        ``model`` is the ORM mapped class or Core ``Table`` whose columns
+        the filter's source paths resolve against — the SQLAlchemy half of
+        the Pydantic/SQLAlchemy model pair (design doc 04). Returns a
+        ``ColumnElement[bool]`` for ``select(...).where(...)``, or ``None``
+        when no filters are applied. Requires the ``[sqlalchemy]`` extra;
+        see :class:`~fast_pager.backends.sqlalchemy.SQLAlchemyCompiler` for
+        the escaping/case-sensitivity semantics and what the backend
+        declares unsupported.
+        """
+        return self._sqlalchemy_compiler(model).compile_where(self.to_ast().where)
+
+    def sort_sqlalchemy(self, model: Any) -> list[Any]:
+        """Compile the sort keys to ``asc()``/``desc()`` expressions for ``order_by``."""
+        return list(self._sqlalchemy_compiler(model).compile_order(list(self._sorts)))
+
+    def apply_sqlalchemy(self, statement: Any, model: Any | None = None) -> Any:
+        """Apply this query's WHERE / ORDER BY / LIMIT / OFFSET to a ``select()``.
+
+        The one-line call site symmetric with :meth:`to_mongo` (design doc
+        01's uniform-``q`` philosophy)::
+
+            stmt = q.apply_sqlalchemy(select(UserRow))
+            rows = session.execute(stmt).scalars().all()
+
+        ``model`` defaults to the statement's single selected entity (or
+        table); pass it explicitly for joins or multi-entity selects.
+        """
+        if model is None:
+            from .backends.sqlalchemy import infer_model
+
+            model = infer_model(statement)
+        where = self.to_sqlalchemy(model)
+        if where is not None:
+            statement = statement.where(where)
+        order = self.sort_sqlalchemy(model)
+        if order:
+            statement = statement.order_by(*order)
+        return statement.offset(self.offset).limit(self.limit)
 
     async def paginate(self, collection: Any, *, total: TotalMode = "exact") -> Page[Any]:
         """Run the find (+ optional count) and return a :class:`~fast_pager.Page`.
