@@ -36,6 +36,9 @@ classifiers = [
 mongo = [
     "pymongo>=4.6",
 ]
+sqlalchemy = [
+    "sqlalchemy>=2.0",
+]
 
 [project.urls]
 Homepage = "https://github.com/eytanohana/fast-pager"
@@ -54,6 +57,7 @@ dev = [
     "mypy>=1.14",
     "httpx>=0.27",           # fastapi TestClient
     "pre-commit>=4.0",
+    "sqlalchemy>=2.0",
 ]
 docs = [
     "mike>=2.2.0",
