@@ -10,6 +10,50 @@ below. See the [Roadmap](design/05-roadmap-and-release.md) for what's coming
 next, and the [development plan](https://github.com/eytanohana/fast-pager/blob/main/DEVELOPMENT_PLAN.md)
 for the execution detail behind each stage.
 
+## `0.4.0` — Stage 5: SQLAlchemy backend + conformance suite
+
+The database is now genuinely a deployment detail. **`SQLAlchemyCompiler`**
+(`fast_pager.backends.sqlalchemy`, behind the `[sqlalchemy]` extra — the
+core still imports no database code) compiles the same neutral AST to
+SQLAlchemy 2.0 constructs: conditions to `ColumnElement[bool]` expressions,
+groups to `and_`/`or_`, sorts to `asc()`/`desc()`, the window to
+limit/offset. On `FilterQuery` that surfaces as **`q.to_sqlalchemy(model)`
+/ `q.sort_sqlalchemy(model)`**, plus the one-liner
+**`q.apply_sqlalchemy(select(UserRow))`** (WHERE + ORDER BY +
+LIMIT/OFFSET, model inferred from a single-entity select). Substring
+operators use SQLAlchemy's `autoescape` LIKE helpers — `%`/`_` in user
+input match literally, mirroring the Mongo `re.escape()` guarantee — with
+the LIKE case-sensitivity dialect caveats documented rather than papered
+over (`i*` variants are the guaranteed-insensitive forms). Nested models
+map to **JSON columns**: dotted paths compile to JSON path access with
+value-type-driven CASTs (datetimes as ISO strings, enums by value).
+
+What SQL can't express is **declared, not faked** (design doc 04): backends
+now declare `capabilities` (`nested_paths`, `elem_match`) alongside
+`supported_ops`, and the SQLAlchemy backend rejects the array family,
+`elem` element matching, `has_key`, `regex`, `text_search`, and `exists`
+with a `CompilationError` naming the operator — never a silently dropped
+filter. The optional **`FilterDepends(..., backend=...)`** hook moves that
+check to **registration time**: the generated parameter surface is
+intersected with the backend's declaration and mismatches raise
+`ConfigurationError` at startup, naming every offending parameter.
+
+Backing it all is the **backend conformance suite**
+(`fast_pager.conformance`): a fixed battery of AST inputs covering every
+operator/container the core produces — merging, escaping/anchoring,
+`$elem` grouping, guarded length ranges, unsafe-map-key rejection, sort,
+paging — plus a runner enforcing the backend-neutral semantics; adapters
+supply their own expected-output tables. Both first-party backends run the
+full battery in CI, and third-party adapters can run it to claim
+compatibility. A second example app (`examples/sqlalchemy_app/`) serves
+the same endpoints as the Mongo example against a real in-memory SQLite
+database — only the backend swaps. See the new
+[Backends reference](reference/backends.md) (selection guide + capability
+matrix). Strictly additive for applications; one contract note for adapter
+authors: the `QueryCompiler` protocol now includes the `capabilities`
+attribute, so custom compilers must declare it to satisfy the protocol.
+100% test coverage, `mypy --strict` clean.
+
 ## `0.3.0` — Stage 4: response envelope & ergonomics
 
 The "list + total count" shape is now one line. **`Page[T]`** is a generic
@@ -202,11 +246,9 @@ installable against `0.0.1` — see [Getting Started](getting-started.md).
 
 ## Coming next
 
-Stage 5 ships the second backend in **`v0.4.0`**: a **conformance test
-suite** first (a fixed battery of `FilterAST → expected shape` cases every
-adapter must pass, run against `MongoCompiler` to lock in behavior), then a
-**SQLAlchemy** adapter (`Condition` → `ColumnElement`, capability
-declaration, `[sqlalchemy]` extra; flat tables + JSON/JSONB first) — the
-same example endpoints running on Mongo and SQLAlchemy with only a backend
-swap. Tracked in
+Stage 6 ships **cursor/keyset pagination** in **`v0.5.0`**: opaque cursor
+tokens with an automatic unique tiebreaker (`_id` / primary key) appended
+to the sort key, on at least one backend and conformance-tested — plus the
+published **adapter authoring guide** documenting the `QueryCompiler`
+contract and conformance-suite usage for third-party backends. Tracked in
 [design doc 05 — Roadmap & Release Plan](design/05-roadmap-and-release.md).

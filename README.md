@@ -60,6 +60,16 @@ class UserFilter(FilterSet):
 async def list_users(q: FilterQuery[User] = FilterDepends(UserFilter)): ...
 ```
 
+Running on SQL instead of Mongo? The same `q` compiles to SQLAlchemy 2.0
+(`pip install 'fast-pager[sqlalchemy]'`) — only the backend swaps:
+
+```python
+@app.get("/users")
+def list_users(q: FilterQuery[User] = FilterDepends(User)):
+    stmt = q.apply_sqlalchemy(select(UserRow))   # WHERE + ORDER BY + LIMIT/OFFSET
+    return session.execute(stmt).scalars().all()
+```
+
 ---
 
 ## Built with AI

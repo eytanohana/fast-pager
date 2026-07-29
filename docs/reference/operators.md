@@ -30,6 +30,16 @@ is in the
 Whatever the layer, an operator that is not *valid* for the field's type is
 rejected at route registration, never at request time.
 
+!!! note "Backend support varies"
+    The compiled examples below show the **MongoDB** forms. Not every
+    operator exists on every backend — the SQLAlchemy backend, for
+    instance, supports the scalar operators but rejects the array family,
+    `elem` matching, `has_key`, `regex`, `text_search`, and `exists` (a
+    `CompilationError`, never a silent drop). The full operator × backend
+    matrix — and the `FilterDepends(..., backend=...)` hook that validates
+    a route's surface at startup — is in the
+    [Backends reference](backends.md).
+
 ## Scalar types
 
 | Python / Pydantic type | Default operators (`safe`) | Additional in `full` |
@@ -52,7 +62,7 @@ An optional field exposes everything its wrapped type `T` does, **plus**:
 | Operator | Tier | Meaning |
 |---|---|---|
 | `isnull` | `safe` | `field__isnull=true` / `false` — is the field `null`? |
-| `exists` | `full` | Mongo-flavored presence check (`{field: {$exists: bool}}`); SQL adapters alias it to `isnull` semantics or reject it |
+| `exists` | `full` | Mongo-flavored presence check (`{field: {$exists: bool}}`); the SQLAlchemy backend rejects it — SQL columns always exist, use `isnull` |
 
 `Optional[list[T]]` works the same way: the array operators below, plus
 `isnull` / `exists`.
@@ -99,6 +109,10 @@ Notes, pinned precisely because arrays are where Mongo surprises people:
   `FilterConfig(sortable=[...])`.
 - Element-level substring matching (`tags__has_substr`) is designed but not
   shipped yet.
+- **The array family is Mongo-only today** — generic SQL has no portable
+  array predicates, so the SQLAlchemy backend
+  [declares it unsupported](backends.md#capabilities-what-each-backend-declares)
+  and rejects it loudly.
 
 Multi-token names like `tags__len__gte` need no special parsing rules: every
 parameter is pre-generated with its exact name at registration, so the full
@@ -258,6 +272,10 @@ The rules, precisely:
   on the `list[NestedModel]` field (or `FilterConfig(exclude=["orders"])`)
   removes the field and every `elem` descendant;
   `exclude=["orders__elem__amount"]` removes a single element field.
+- **`elem` matching is Mongo-only today**: SQL has no `$elemMatch`
+  equivalent and `fast-pager` does not fake same-element semantics — the
+  SQLAlchemy backend rejects `elem` paths
+  ([Backends reference](backends.md#capabilities-what-each-backend-declares)).
 
 ## Maps — `dict[str, T]`
 
@@ -300,6 +318,9 @@ class User(BaseModel):
   `FilterConfig(sortable=["metadata__region"])` — it compiles to the dotted
   `metadata.region`. `Optional[dict[str, T]]` adds `isnull` (`safe`) and
   `exists` (`full`).
+- **`has_key` is Mongo-only today** — JSON key existence is
+  dialect-specific in SQL, so the SQLAlchemy backend rejects it
+  ([Backends reference](backends.md#capabilities-what-each-backend-declares)).
 
 ## Operator semantics
 
